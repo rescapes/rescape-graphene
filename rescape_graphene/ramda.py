@@ -26,7 +26,7 @@ def compact_dict(dct):
     :param dct:
     :return: The filtered dict
     """
-    return dict(filter(lambda (key, value): value, dct.items()))
+    return dict(filter(lambda key_value: key_value[1], dct.items()))
 
 
 @curry
@@ -116,7 +116,7 @@ def item_path_or(default, keys, dict):
     """
     if not keys:
         raise ValueError("Expected at least one key, got {0}".format(keys))
-    resolved_keys = keys.split('.') if isinstance(keys, basestring) else keys
+    resolved_keys = keys.split('.') if isinstance(keys, str) else keys
     current_value = dict
     for key in resolved_keys:
         current_value = prop_or(default, key, default_to({}, current_value))
