@@ -4,19 +4,24 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+
 class CleanCommand(setuptools.Command):
     """Custom clean command to tidy up the project root."""
     user_options = []
+
     def initialize_options(self):
         pass
+
     def finalize_options(self):
         pass
+
     def run(self):
         os.system('rm -vrf ./build ./dist ./*.pyc ./*.tgz ./*.egg-info')
 
+
 setuptools.setup(
     name="rescape_graphene",
-    version="0.0.9",
+    version="0.0.10",
     author="Andy Likuski",
     author_email="andy@likuski.org",
     description="Graphene helpers for rescape projects",
@@ -31,5 +36,12 @@ setuptools.setup(
     ),
     cmdclass={
         'clean': CleanCommand,
-    }
+    },
+    install_requires=[
+        'pyramda >= 0.1',
+        'graphene >= 2.1',
+        'graphene-django >= 2.0.0',
+        'inflection >= 0.3.1',
+        'deepmerge >= 0.0.4'
+    ],
 )
