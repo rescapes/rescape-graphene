@@ -4,7 +4,9 @@ Graphene helpers for rescape projects
 To build:
 Update the version in setup.py
 Run to generate build:
-python3 setup.py clean sdist bdist_wheel && twine upload
+Update the version with bumpversion, which can't seem to look it up itself but udpates setup.py
+bumpversion --current-version {look in setup.py} patch setup.py
+python3 setup.py clean sdist bdist_wheel
 To distribute to testpypi site:
 Upload package: twine upload --repository testpypi dist/*
 
