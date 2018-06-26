@@ -20,6 +20,15 @@ def filter_dict(f, dct):
     return dict(filter(f, dct.items()))
 
 
+def compact_dict(dct):
+    """
+        Compacts a dct by removing pairs with a None value
+    :param dct:
+    :return: The filtered dict
+    """
+    return dict(filter(lambda (key, value): value, dct.items()))
+
+
 @curry
 def prop_or(default, key, dct):
     """
@@ -101,17 +110,21 @@ def item_path_or(default, keys, dict):
     """
     Optional version of item_path with a default value
     :param default:
-    :param keys:
+    :param keys: List of keys or dot-separated string
     :param dict:
     :return:
     """
     if not keys:
         raise ValueError("Expected at least one key, got {0}".format(keys))
+    resolved_keys = keys.split('.') if isinstance(keys, basestring) else keys
     current_value = dict
-    for key in keys:
+    for key in resolved_keys:
         current_value = prop_or(default, key, default_to({}, current_value))
     return current_value
 
+@curry
+def item_str_path(keys, dct):
+    return item_path(keys.split('.'), dct)
 
 @curry
 def has(prop, object_or_dct):
@@ -158,13 +171,21 @@ def quote_unless_number(value):
     return value if isinstance(numbers.Number, value) else '"%s"' % value
 
 
-
+def head(lst):
+    """
+        Implementation of Ramda's head
+    :param lst:
+    :return:
+    """
+    return lst[0]
 
 
 @curry
 def map_with_obj(f, dct):
     """
-        Implementation of Ramda's mapWithObj with key and value as args
+        Implementation of Ramda's mapObjIndexed without the final argument.
+        This returns the original key with the mapped value, so return a key/value pair and take the values
+        to also update the keys
     :param f:
     :param dct:
     :return:
@@ -173,6 +194,18 @@ def map_with_obj(f, dct):
     for k, v in dct.items():
         f_dict[k] = f(k, v)
     return f_dict
+
+
+@curry
+def map_key_values(f, dct):
+    """
+        Like map_with_obj but expects a key value pair returned from f and uses it to form a new dict
+    :param f:
+    :param dct:
+    :return:
+    """
+    return from_pairs(values(map_with_obj(f, dct)))
+
 
 @curry
 def map_keys(f, dct):
