@@ -21,7 +21,7 @@ class CleanCommand(setuptools.Command):
 
 setuptools.setup(
     name="rescape_graphene",
-    version="0.1.0",
+    version="0.1.1",
     author="Andy Likuski",
     author_email="andy@likuski.org",
     description="Graphene helpers for rescape projects",
@@ -38,10 +38,10 @@ setuptools.setup(
         'clean': CleanCommand,
     },
     install_requires=[
-        'pyramda>=0.1',
-        'graphene>=2.1',
-        'graphene-django>=2.0.0',
-        'inflection>=0.3.1',
-        'deepmerge>=0.0.4'
+        'pyramda',
+        'graphene',
+        'graphene-django',
+        'inflection',
+        'deepmerge'
     ],
 )
