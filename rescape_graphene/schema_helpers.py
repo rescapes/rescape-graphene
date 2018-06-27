@@ -2,7 +2,7 @@ import inspect
 from decimal import Decimal
 
 import graphene
-import ramda as R
+from . import ramda as R
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
@@ -11,8 +11,8 @@ from graphene import Scalar, InputObjectType
 from graphql.language import ast
 from inflection import camelize
 # Indicates a CRUD operation is not allowed to use this field
-from graphene_helpers import dump_graphql_keys, dump_graphql_data_object
-from memoize import memoize
+from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
+from .memoize import memoize
 
 DENY = 'deny'
 # Indicates a CRUD operation is required to use this field

@@ -1,12 +1,12 @@
 import logging
 
-import ramda as R
+from . import ramda as R
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from graphene.test import Client
-from sample_schema import schema
+from .sample_schema import schema
 from snapshottest import TestCase
-from user_schema import graphql_update_or_create_user, graphql_query_users
+from .user_schema import graphql_update_or_create_user, graphql_query_users
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

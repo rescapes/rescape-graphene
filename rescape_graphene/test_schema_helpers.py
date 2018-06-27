@@ -1,12 +1,12 @@
 import graphene
-import ramda as R
+from . import ramda as R
 from django.contrib.auth.hashers import make_password
 from graphene.test import Client
-from sample_schema import schema
-from schema_helpers import allowed_query_arguments, input_type_fields, CREATE, UPDATE, \
+from .sample_schema import schema
+from .schema_helpers import allowed_query_arguments, input_type_fields, CREATE, UPDATE, \
     input_type_parameters_for_update_or_create, merge_with_django_properties, REQUIRE, DENY
 from snapshottest import TestCase
-from user_schema import UserType, user_fields
+from .user_schema import UserType, user_fields
 
 
 class UserTypeCase(TestCase):

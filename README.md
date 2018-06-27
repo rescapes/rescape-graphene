@@ -10,7 +10,7 @@ bumpversion --current-version {look in setup.py} patch setup.py
 python3 setup.py clean sdist bdist_wheel
 To distribute to testpypi site:
 Upload package:
-twine upload --repository testpypi dist/*
+twine upload dist/*
 
 For setup of testpypi see ~/.pypirc or create one according to the testpypi docs:
 e.g.:

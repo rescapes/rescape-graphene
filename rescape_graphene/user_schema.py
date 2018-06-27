@@ -1,13 +1,15 @@
 import graphene
-import rescape_graphene.ramda as R
+from . import ramda as R
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from graphene import InputObjectType
 from graphene_django.types import DjangoObjectType
-from rescape_graphene.schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
+from .schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
     merge_with_django_properties, input_type_parameters_for_update_or_create, UPDATE, \
     guess_update_or_create, graphql_update_or_create, graphql_query
 
+import django
+django.setup()
 
 class UserType(DjangoObjectType):
     class Meta:

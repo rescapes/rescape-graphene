@@ -1,5 +1,5 @@
 from snapshottest import TestCase
-from ramda import filter_dict
+from .ramda import filter_dict
 
 
 class TestRamda(TestCase):

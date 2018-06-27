@@ -4,8 +4,8 @@ from django.contrib.auth import get_user_model, get_user
 from graphene import ObjectType, Schema
 from graphene_django.debug import DjangoDebug
 from graphql_jwt.decorators import login_required
-from user_schema import UserType, user_fields, CreateUser, UpdateUser
-from rescape_graphene.schema_helpers import allowed_query_arguments
+from .user_schema import UserType, user_fields, CreateUser, UpdateUser
+from .schema_helpers import allowed_query_arguments
 
 
 class Query(ObjectType):

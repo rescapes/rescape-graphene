@@ -1,5 +1,5 @@
 from inflection import camelize
-import ramda as R
+from . import ramda as R
 
 
 def handleGrapheneTypes(key, value):
