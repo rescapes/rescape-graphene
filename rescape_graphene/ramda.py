@@ -280,14 +280,11 @@ def compact(lst):
 
 def from_pairs(pairs):
     """
-        Ramda implementation of from_pairs
+        Implementation of ramda from_paris Converts a list of pairs or tuples of pairs to a dict
     :param pairs:
     :return:
     """
-    result = {}
-    for pair in pairs:
-        result[pair[0]] = pair[1]
-    return result
+    return {k: v for k, v in pairs}
 
 
 def flatten(lst):
@@ -346,3 +343,13 @@ def isalambda(v):
     :return:
     """
     return isfunction(v) and v.__name__ == '<lambda>'
+
+
+def map_prop_value_as_index(prp, lst):
+    """
+        Returns the given prop of each item in the list
+    :param prp:
+    :param lst:
+    :return:
+    """
+    return map(lambda item: prop(prp, item), lst)
