@@ -352,4 +352,4 @@ def map_prop_value_as_index(prp, lst):
     :param lst:
     :return:
     """
-    return map(lambda item: prop(prp, item), lst)
+    return from_pairs(map(lambda item: (prop(prp, item), item), lst))
