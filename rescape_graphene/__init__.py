@@ -31,8 +31,11 @@ from .user_schema import (
     graphql_refresh_token
 )
 
+from .json_field_helpers import resolver
+
 __all__ = [
     'scehema_helpers',
     'user_schema',
-    'ramda'
+    'ramda',
+    'json_field_helpers'
 ]
