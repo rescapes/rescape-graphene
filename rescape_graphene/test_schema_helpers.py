@@ -9,7 +9,7 @@ from snapshottest import TestCase
 from .user_schema import UserType, user_fields
 
 
-class UserTypeCase(TestCase):
+class SchemaHelpersTypeCase(TestCase):
     client = None
 
     def setUp(self):

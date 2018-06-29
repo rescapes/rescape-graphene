@@ -1,5 +1,9 @@
 from inflection import camelize
-from . import ramda as R
+try:
+    from . import ramda as R
+except Exception:
+    import ramda as R
+import numbers
 
 
 def handleGrapheneTypes(key, value):
@@ -34,6 +38,7 @@ def dump_graphql_keys(dct):
         dct)
     ))
 
+
 def dump_graphene_type(key, value):
     """
         Dumps the graphql query representation of a scalar Graphene type or a complex time, in the latter case
@@ -43,6 +48,7 @@ def dump_graphene_type(key, value):
     :return:
     """
     return handleGrapheneTypes(key, value) if R.isfunction(R.prop('type', value)) else camelize(key, False)
+
 
 def dump_graphql_data_object(dct):
     """
@@ -55,10 +61,11 @@ def dump_graphql_data_object(dct):
     return '{%s}' % R.join(
         ', ',
         R.map(
-            lambda key_value: R.join(': ', [camelize(key_value[0], False), R.quote_unless_number(key_value[1])]),
+            lambda key_value: R.join(': ', [camelize(key_value[0], False), quote(key_value[1])]),
             dct.items()
         )
     )
+
 
 def full_stack():
     import traceback, sys
@@ -72,3 +79,32 @@ def full_stack():
     if not exc is None:
          stackstr += '  ' + traceback.format_exc().lstrip(trc)
     return stackstr
+
+
+def quote(value):
+    """
+        Puts strings in quotes and but not numbers.
+        If value is a dict it is represented as as
+        key: value,
+        key: value
+        etc, where each value is recursively processed
+    :param value:
+    :return:
+    """
+    if isinstance(value, (numbers.Number)):
+        return value
+    elif isinstance(value, (dict)):
+        return quote_dict(value)
+    else:
+        return '"%s"' % value
+
+
+def quote_dict(dct):
+    """
+        Recursively quotes dict values
+    :param dct:
+    :return:
+    """
+
+    # The middle arg here is a newline if value is another dict, otherwise it's a space
+    return '\n'.join(['%s:%s%s' % (key, '\n' if isinstance(value, (dict)) else ' ', quote(value)) for key, value in dct.items()])

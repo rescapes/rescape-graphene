@@ -1,4 +1,3 @@
-import numbers
 from inspect import isfunction
 import itertools
 from deepmerge import Merger
@@ -165,10 +164,6 @@ def dump_json(json):
     :return:
     """
     return dumps(json, sort_keys=True, indent=4, separators=(',', ': '))
-
-
-def quote_unless_number(value):
-    return value if isinstance(numbers.Number, value) else '"%s"' % value
 
 
 def head(lst):
