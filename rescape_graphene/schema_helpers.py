@@ -380,13 +380,12 @@ def graphql_query(query_name, fields):
                 )
             )
         )
-
-        query = '''query someMadeUpString(%s) { 
-        %s%s {
-            %s
-        }
-    }''' % (
-            formatted_definitions,
+        query = '''query someMadeUpString%s { 
+                %s%s {
+                    %s
+                }
+            }''' % (
+            '(%s)' % formatted_definitions if formatted_definitions else '',
             query_name,
             '(%s)' %
             R.join(
