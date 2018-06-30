@@ -1,4 +1,6 @@
 from inflection import camelize
+from graphene import ObjectType
+import inspect
 
 try:
     from . import ramda as R
@@ -31,7 +33,7 @@ def dump_graphql_keys(dct):
             ...
         }
         ...
-    :param dct: keyed by field 
+    :param dct: keyed by field
     :return:
     """
     return R.join('\n', R.values(R.map_with_obj(
@@ -48,7 +50,12 @@ def dump_graphene_type(key, value):
     :param value:
     :return:
     """
-    return handleGrapheneTypes(key, value) if R.isfunction(R.prop('type', value)) else camelize(key, False)
+
+    typ = R.prop('type', value)
+    # For some reason issubclass isn't working here
+    return handleGrapheneTypes(key, value) if \
+        R.isfunction(typ) or (inspect.isclass(typ) and typ.__bases__[0] == ObjectType) else \
+        camelize(key, False)
 
 
 def dump_graphql_data_object(dct):
