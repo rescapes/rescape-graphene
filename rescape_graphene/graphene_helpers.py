@@ -1,4 +1,5 @@
 from inflection import camelize
+
 try:
     from . import ramda as R
 except Exception:
@@ -72,16 +73,16 @@ def full_stack():
     exc = sys.exc_info()[0]
     stack = traceback.extract_stack()[:-1]  # last one would be full_stack()
     if not exc is None:  # i.e. if an exception is present
-        del stack[-1]       # remove call of full_stack, the printed exception
-                            # will contain the caught exception caller instead
+        del stack[-1]  # remove call of full_stack, the printed exception
+        # will contain the caught exception caller instead
     trc = 'Traceback (most recent call last):\n'
     stackstr = trc + ''.join(traceback.format_list(stack))
     if not exc is None:
-         stackstr += '  ' + traceback.format_exc().lstrip(trc)
+        stackstr += '  ' + traceback.format_exc().lstrip(trc)
     return stackstr
 
 
-def quote(value):
+def quote(value, tab=-1):
     """
         Puts strings in quotes and but not numbers.
         If value is a dict it is represented as as
@@ -94,27 +95,48 @@ def quote(value):
     if isinstance(value, (numbers.Number)):
         return value
     elif isinstance(value, (dict)):
-        return quote_dict(value)
+        return quote_dict(value, tab + 1)
     elif isinstance(value, (list, tuple)):
-        return quote_list(value)
+        return quote_list(value, tab + 1)
     else:
-        return '"%s"' % value
+        return quote_str(value)
 
 
-def quote_dict(dct):
+def quote_dict(dct, tab):
     """
         Recursively quotes dict values
     :param dct:
     :return:
     """
+    t = '\t' * tab
 
     # The middle arg here is a newline if value is another dict, otherwise it's a space
-    return '\n'.join(['%s:%s%s' % (key, '\n' if isinstance(value, (dict)) else ' ', quote(value)) for key, value in dct.items()])
+    dct_sring = '\n{0}'.format(t).join(
+        [
+            '%s:%s%s' % (
+                key,
+                '\n{0}'.format(t) if isinstance(value, (dict)) else ' ',
+                str(quote(value, tab))
+            ) for key, value in dct.items()
+        ])
+    return '{0}{{\n{1}{2}\n{3}}}'.format(t, t, dct_sring, t)
 
-def quote_list(lst):
+
+def quote_list(lst, tab):
     """
         Recursively quotes list values
     :param lst
     :return:
     """
-    return '[%s]' % '\n'.join(R.map(lambda item: quote(item), lst))
+    t = '\t' * tab
+
+    return '[\n{0}{1}\n]'.format(
+        t,
+        '\n{0}'.format(t).join(
+            R.map(lambda item: str(quote(item, tab)), lst)
+        )
+    )
+
+
+def quote_str(str):
+    return '"{0}"'.format(str)

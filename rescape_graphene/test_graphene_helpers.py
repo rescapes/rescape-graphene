@@ -15,7 +15,9 @@ class TestGrapheneHelpers(TestCase):
             ),
             f=[
                 'a',
-                'b'
+                'b',
+                3.1
             ]
         ))
-        assert str == 'a: 1\nb: "a"\nc:\nd: 1\ne: "a"\nf: ["a"\n"b"]'
+        print(str)
+        assert str == 'a: 1\nb: "a"\nc:\nd: 1\ne: "a"\nf: ["a"\n"b"\n3.1]'
