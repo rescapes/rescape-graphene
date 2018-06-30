@@ -95,6 +95,8 @@ def quote(value):
         return value
     elif isinstance(value, (dict)):
         return quote_dict(value)
+    elif isinstance(value, (list, tuple)):
+        return quote_list(value)
     else:
         return '"%s"' % value
 
@@ -108,3 +110,11 @@ def quote_dict(dct):
 
     # The middle arg here is a newline if value is another dict, otherwise it's a space
     return '\n'.join(['%s:%s%s' % (key, '\n' if isinstance(value, (dict)) else ' ', quote(value)) for key, value in dct.items()])
+
+def quote_list(lst):
+    """
+        Recursively quotes list values
+    :param lst
+    :return:
+    """
+    return '[%s]' % '\n'.join(R.map(lambda item: quote(item), lst))

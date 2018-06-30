@@ -12,6 +12,10 @@ class TestGrapheneHelpers(TestCase):
             c=dict(
                 d=1,
                 e='a'
-            )
+            ),
+            f=[
+                'a',
+                'b'
+            ]
         ))
-        assert str == 'a: 1\nb: "a"\nc:\nd: 1\ne: "a"'
+        assert str == 'a: 1\nb: "a"\nc:\nd: 1\ne: "a"\nf: ["a"\n"b"]'
