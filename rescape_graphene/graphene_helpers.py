@@ -121,7 +121,7 @@ def quote_dict(dct, tab):
     dct_sring = '\n{0}'.format(t).join(
         [
             '%s:%s%s' % (
-                key,
+                camelize(key, False),
                 '\n{0}'.format(t) if isinstance(value, (dict)) else ' ',
                 str(quote(value, tab))
             ) for key, value in dct.items()
