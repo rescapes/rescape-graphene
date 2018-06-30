@@ -7,7 +7,7 @@ from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
     BigIntegerField, NullBooleanField
-from graphene import Scalar, InputObjectType
+from graphene import Scalar, InputObjectType, ObjectType
 from graphql.language import ast
 from inflection import camelize
 # Indicates a CRUD operation is not allowed to use this field
