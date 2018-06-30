@@ -90,7 +90,7 @@ def input_type_class(field_dict_value, crud):
         # on a User instance
         input_type_fields(
             merge_with_django_properties(
-                field_dict_value['graphene_type'],
+                graphene_class,
                 field_dict_value['fields']
             ) if hasattr(graphene_class._meta, 'model') else
             field_dict_value['fields'],
@@ -285,21 +285,34 @@ def guess_update_or_create(fields_dict):
 
 def instantiate_graphene_type(value, crud):
     """
-        Instantiates the Graphene type at value.type
+        Instantiates the Graphene type at value.type. Most of the time the type is a primitive and
+        doesn't need to be mapped to an input type. If the type is an ObjectType, we need to dynamically
+        construct an InputObjectType
     :param value: Dict containing type and possible crud fields like value['create'] and value['update']
     These optional values indicate if a field is required
     :param crud:
     :return:
     """
     graphene_type = R.prop('type', value)
-    # If a lambda is returned we have an InputType subclass that needs to know the crud type
-    resolved_graphene_type = graphene_type(crud) if R.isfunction(graphene_type) else graphene_type
-    # Instantiate
-    return resolved_graphene_type(
-        # Add required depending on whether this is an insert or update
-        # This means if a user omits these fields an error will occur
-        required=R.prop_eq_or_in_or(False, crud, REQUIRE, value)
-    )
+    graphene_type_modifier = R.prop_or(None, 'type_modifier', value)
+    if inspect.isclass(graphene_type) and issubclass(graphene_type, (ObjectType)):
+        # ObjecTypes must be converted to a dynamic InputTypeVersion
+        fields = R.prop('fields', value)
+        resolved_graphene_type = input_type_class(dict(graphene_type=graphene_type, fields=fields), crud)
+    else:
+        # If a lambda is returned we have an InputType subclass that needs to know the crud type
+        resolved_graphene_type = graphene_type(crud) if R.isfunction(graphene_type) else graphene_type
+
+
+    # Instantiate using the type_modifier function if we need to wrap this in a List,
+    # Otherwise instantiate and pass the required flat
+    return graphene_type_modifier(resolved_graphene_type) if \
+        graphene_type_modifier else \
+        resolved_graphene_type(
+            # Add required depending on whether this is an insert or update
+            # This means if a user omits these fields an error will occur
+            required=R.prop_eq_or_in_or(False, crud, REQUIRE, value)
+        )
 
 
 def input_type_fields(fields_dict, crud=None):
