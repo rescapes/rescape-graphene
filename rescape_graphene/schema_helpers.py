@@ -2,6 +2,8 @@ import inspect
 from decimal import Decimal
 
 import graphene
+from django.contrib.gis.db.models import GeometryField
+
 from . import ramda as R
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
@@ -13,6 +15,7 @@ from inflection import camelize
 # Indicates a CRUD operation is not allowed to use this field
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
+import graphql_geojson
 
 DENY = 'deny'
 # Indicates a CRUD operation is required to use this field
@@ -77,7 +80,9 @@ def input_type_class(field_dict_value, crud):
     :param crud: CREATE, UPDATE, or READ
     :return: An InputObjectType subclass
     """
-    graphene_class = field_dict_value['graphene_type']
+    # Get the Graphene type. This comes from graphene_type if the class containing the field is a Django Model,
+    # Otherwise it comes from type, since we don't need type for the Django model
+    graphene_class = field_dict_value['graphene_type'] or field_dict_value['type']
     return type(
         '%sRelated%sInputType' % (graphene_class.__name__, camelize(crud, True)),
         (InputObjectType,),
@@ -144,7 +149,7 @@ def django_to_graphene_type(field, field_dict_value):
         # the other graphene types above
         return related_input_field_for_crud_type(field_dict_value)
 
-    return {
+    types = {
         AutoField: graphene.Int,
         IntegerField: graphene.Int,
         BigAutoField: graphene.Int,
@@ -161,8 +166,17 @@ def django_to_graphene_type(field, field_dict_value):
         EmailField: graphene.String,
         UUIDField: graphene.UUID,
         TextField: graphene.String,
-        JSONField: graphene.JSONString
-    }[field.__class__]
+        JSONField: graphene.JSONString,
+        GeometryField: graphql_geojson.Geometry
+    }
+    cls = field.__class__
+    match = R.prop_or(None, cls, types)
+    # Find the type that matches. If not match we assume that the class only has one base class,
+    # such as GeometryField subclasses
+    while not match:
+        cls == cls.__bases__[0]
+        match = R.prop_or(None, cls, types)
+
 
 
 def process_field(field_to_unique_field_groups, field, field_dict_value):
