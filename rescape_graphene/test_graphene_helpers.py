@@ -19,5 +19,18 @@ class TestGrapheneHelpers(TestCase):
                 3.1
             ]
         ))
-        print(str)
-        assert str == 'a: 1\nb: "a"\nc:\nd: 1\ne: "a"\nf: ["a"\n"b"\n3.1]'
+        assert str == """{
+    a: 1
+    b: "a"
+    c:
+        {
+            d: 1
+            e: "a"
+        }
+    f: [
+        "a"
+        "b"
+        3.1
+    ]
+}
+"""

@@ -176,6 +176,7 @@ def django_to_graphene_type(field, field_dict_value):
     while not match:
         cls == cls.__bases__[0]
         match = R.prop_or(None, cls, types)
+    return match
 
 
 

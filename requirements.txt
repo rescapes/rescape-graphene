@@ -1,9 +1,12 @@
-django==1.11.11
+django==2.0.7
 pyramda==0.1
 graphene==2.1
-graphene-django==2.0.0
+graphene-django==2.1rc0
 snapshottest==0.5.0
 inflection==0.3.1
 deepmerge==0.0.4
-bumpversion-0.5.3
+bumpversion==0.5.3
 django-graphql-geojson==0.1.4
+djangorestframework==3.8.2
+psycopg2-binary==2.7.5
+django-graphql-jwt==0.1.10
