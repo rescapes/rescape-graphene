@@ -12,7 +12,7 @@ To distribute to testpypi site:
 Upload package:
 twine upload dist/*
 
-git commit . -m "Version update" && git push && bumpversion --current-version {look in setup.py} patch setup.py && python3 setup.py clean sdist bdist_wheel && twine upload dist/*
+git commit . -m "Version update" && git push && bumpversion --current-version {look in setup.py} patch && python3 setup.py clean sdist bdist_wheel && twine upload dist/*
 
 For setup of testpypi see ~/.pypirc or create one according to the testpypi docs:
 e.g.:
