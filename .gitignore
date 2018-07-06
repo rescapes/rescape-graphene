@@ -15,3 +15,4 @@ staticfiles
 venv
 .idea
 .DS_Store
+snapshots
