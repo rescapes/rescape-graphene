@@ -1,0 +1,17 @@
+*.pyc
+*.py[cod]
+.jshintrc
+*.egg-info
+*.log
+build
+db.sqlite3
+dist
+logs
+node_modules
+prod.ini
+real_set*csv
+sop.zip
+staticfiles
+venv
+.idea
+.DS_Store
