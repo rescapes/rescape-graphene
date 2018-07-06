@@ -10,3 +10,5 @@ django-graphql-geojson==0.1.4
 djangorestframework==3.8.2
 psycopg2-binary==2.7.5
 django-graphql-jwt==0.1.10
+wheel==0.31.1
+twine==1.11.0

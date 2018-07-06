@@ -174,7 +174,7 @@ def django_to_graphene_type(field, field_dict_value):
     # Find the type that matches. If not match we assume that the class only has one base class,
     # such as GeometryField subclasses
     while not match:
-        cls == cls.__bases__[0]
+        cls = cls.__bases__[0]
         match = R.prop_or(None, cls, types)
     return match
 
