@@ -88,7 +88,7 @@ def prop_eq_or_in_or(default, key, value, dct):
     """
     return has(key, dct) and \
            (dct[key] == value if key in dct else (
-               dct[key] in value if isinstance(value, (list, tuple)) and not isinstance(value, (str))
+               dct[key] in value if isinstance((list, tuple), value) and not isinstance(str, value)
                else default
            ))
 
@@ -105,18 +105,18 @@ def default_to(default, value):
 
 
 @curry
-def item_path_or(default, keys, dct):
+def item_path_or(default, keys, dict):
     """
     Optional version of item_path with a default value
     :param default:
     :param keys: List of keys or dot-separated string
-    :param dct:
+    :param dict:
     :return:
     """
     if not keys:
         raise ValueError("Expected at least one key, got {0}".format(keys))
-    resolved_keys = keys.split('.') if isinstance(keys, str) else keys
-    current_value = dct
+    resolved_keys = keys.split('.') if isinstance(str, keys) else keys
+    current_value = dict
     for key in resolved_keys:
         current_value = prop_or(default, key, default_to({}, current_value))
     return current_value
