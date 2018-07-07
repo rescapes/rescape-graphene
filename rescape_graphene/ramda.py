@@ -29,15 +29,18 @@ def compact_dict(dct):
 
 
 @curry
-def prop_or(default, key, dct):
+def prop_or(default, key, dct_or_obj):
     """
-        Ramda propOr implmentation
+        Ramda propOr implementation. This also resolves object attributes, so key
+        can be a dict prop or an attribute of dct_or_obj
     :param default:
     :param key:
-    :param dct:
+    :param dct_or_obj:
     :return:
     """
-    return dct[key] if key in dct else default
+    # Note that hasattr is a builtin and getattr is a ramda function, hence the different arg position:w
+    return dct_or_obj[key] if isinstance(dict, dct_or_obj) and key in dct_or_obj else \
+        (getattr(key, dct_or_obj) if hasattr(dct_or_obj, key) else default)
 
 
 @curry
@@ -105,18 +108,18 @@ def default_to(default, value):
 
 
 @curry
-def item_path_or(default, keys, dict):
+def item_path_or(default, keys, dict_or_obj):
     """
-    Optional version of item_path with a default value
+    Optional version of item_path with a default value. keys can be dict keys or object attributes, or a combination
     :param default:
     :param keys: List of keys or dot-separated string
-    :param dict:
+    :param dict_or_obj: A dict or obj
     :return:
     """
     if not keys:
         raise ValueError("Expected at least one key, got {0}".format(keys))
     resolved_keys = keys.split('.') if isinstance(str, keys) else keys
-    current_value = dict
+    current_value = dict_or_obj
     for key in resolved_keys:
         current_value = prop_or(default, key, default_to({}, current_value))
     return current_value
