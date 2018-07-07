@@ -200,7 +200,10 @@ def process_field(field_to_unique_field_groups, field, field_dict_value):
     # In cases where we need an explicit type, becsuse the field represents something modeled differently than django,
     # we specify the type property on field_dict_value, which takes precedence
     return dict(
+        # Resolves to a lambda that expects a crud value and then returns a lamda that expects args
         type=django_to_graphene_type(field, field_dict_value),
+        # This tells that the relation is based on a Django class
+        class_type=R.item_path_or(None, ['graphene_type', '_meta', 'class_type'], field_dict_value),
         unique=unique
     )
 
@@ -280,7 +283,10 @@ def allowed_query_arguments(fields_dict):
             # Only; accept Scalars. We don't need Relations because they are done automatically by graphene
             # inspect.isclass(R.prop('type', value)) and issubclass(R.prop('type', value), Scalar) and
             # Don't allow DENYd READs
-            R.not_func(R.prop_eq_or_in(READ, DENY, key_value[1])),
+            R.and_func(
+                not R.prop_or(False, 'class_type', key_value[1]),
+                R.not_func(R.prop_eq_or_in(READ, DENY, key_value[1]))
+            ),
             fields_dict
         )
     )
