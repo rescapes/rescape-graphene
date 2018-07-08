@@ -1,6 +1,6 @@
 from collections import namedtuple
 
-from functional import ramda as R
+from ..functional import ramda as R
 
 
 def resolver(resource, context):

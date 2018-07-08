@@ -1,11 +1,7 @@
 from inflection import camelize
 from graphene import ObjectType
 import inspect
-
-try:
-    from functional import ramda as R
-except Exception:
-    import ramda as R
+from ..functional import ramda as R
 import numbers
 
 
