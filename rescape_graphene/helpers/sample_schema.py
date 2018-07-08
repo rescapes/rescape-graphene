@@ -121,7 +121,7 @@ class CreateFoo(UpsertFoo):
 
     class Arguments:
         foo_data = type('CreateFooInputType', (InputObjectType,),
-                           input_type_fields(foo_fields, CREATE))(required=True)
+                           input_type_fields(foo_fields, CREATE, FooType))(required=True)
 
 
 class UpdateFoo(UpsertFoo):
@@ -131,7 +131,7 @@ class UpdateFoo(UpsertFoo):
 
     class Arguments:
         foo_data = type('UpdateFooInputType', (InputObjectType,),
-                           input_type_fields(foo_fields, UPDATE))(required=True)
+                           input_type_fields(foo_fields, UPDATE, FooType))(required=True)
 
 
 graphql_update_or_create_foo = graphql_update_or_create(foo_mutation_config, foo_fields)
@@ -161,9 +161,17 @@ class Query(ObjectType):
 
         return user
 
+    def resolve_foos(self, info, **kwargs):
+        return Foo.objects.filter(**kwargs)
+
+    def resolve_foo(self, info, **kwargs):
+        return Foo.objects.get(**kwargs)
+
 class Mutation(graphene.ObjectType):
     create_user = CreateUser.Field()
     update_user = UpdateUser.Field()
+    create_foo = CreateFoo.Field()
+    update_foo = UpdateFoo.Field()
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()

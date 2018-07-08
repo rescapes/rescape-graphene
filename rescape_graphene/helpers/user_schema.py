@@ -61,7 +61,7 @@ class CreateUser(UpsertUser):
     """
 
     class Arguments:
-        user_data = type('CreateUserInputType', (InputObjectType,), input_type_fields(user_fields, CREATE))(
+        user_data = type('CreateUserInputType', (InputObjectType,), input_type_fields(user_fields, CREATE, UserType))(
             required=True)
 
 
@@ -71,7 +71,7 @@ class UpdateUser(UpsertUser):
     """
 
     class Arguments:
-        user_data = type('UpdateUserInputType', (InputObjectType,), input_type_fields(user_fields, UPDATE))(
+        user_data = type('UpdateUserInputType', (InputObjectType,), input_type_fields(user_fields, UPDATE, UserType))(
             required=True)
 
 

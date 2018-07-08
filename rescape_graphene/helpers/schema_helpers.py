@@ -70,7 +70,7 @@ class DataPointRelatedCreateInputType(InputObjectType):
 
 
 @memoize(map_args=lambda args: [args[0]['graphene_type'], args[1]])
-def input_type_class(field_dict_value, crud):
+def input_type_class(field_dict_value, crud, parent_type_classes=[]):
     """
     An InputObjectType subclass for use as nested query argument types and mutation argument types
     The subclass is dynamically created based on the field_dict_value['graphene_type'] and the crud type.
@@ -78,13 +78,22 @@ def input_type_class(field_dict_value, crud):
     as well as the rules for the crud type spceified in field_dict_vale.
     :param field_dict_value:
     :param crud: CREATE, UPDATE, or READ
+    :param parent_type_classes: String or String array of parent graphene type classes. Unfortunately, Graphene doesn't
+    let us reuse input types around the schema, even if they are identical, so we must give them unique names
+    based on the parent ancestry
     :return: An InputObjectType subclass
     """
     # Get the Graphene type. This comes from graphene_type if the class containing the field is a Django Model,
     # Otherwise it comes from type, since we don't need type for the Django model
     graphene_class = field_dict_value['graphene_type'] or field_dict_value['type']
+    # Make it an array if not
+    modified_parent_type_classes = parent_type_classes if R.isinstance((list, tuple), parent_type_classes) else [parent_type_classes]
     return type(
-        '%sRelated%sInputType' % (graphene_class.__name__, camelize(crud, True)),
+        '%s%sRelated%sInputType' % (
+            graphene_class.__name__,
+            # Use the ancestry for uniqueness of name
+            R.join('of', R.concat([''], modified_parent_type_classes)),
+            camelize(crud, True)),
         (InputObjectType,),
         # Create Graphene types for the InputType based on the field_dict_value.fields
         # This will typically just be an id field to reference an existing object.
@@ -99,12 +108,14 @@ def input_type_class(field_dict_value, crud):
                 field_dict_value['fields']
             ) if hasattr(graphene_class._meta, 'model') else
             field_dict_value['fields'],
-            crud
+            crud,
+            # Keep our naming unique by appending parent classes
+            R.concat(modified_parent_type_classes, [graphene_class])
         )
     )
 
 
-def related_input_field(field_dict_value, *args, **kwargs):
+def related_input_field(field_dict_value, parent_type_classes, *args, **kwargs):
     """
         Make an InputType subclass based on a Graphene type
     :param field_dict_value: The field dict value for a graphene field. This must exist and have a graphene_type
@@ -114,40 +125,42 @@ def related_input_field(field_dict_value, *args, **kwargs):
         id=dict(create=REQUIRE, update=DENY),
     )
     meaning that only the id can be specified for the DataPoint relationship to resolve an existing DataPoint
+    :param parent_type_classes: String or String array of parent graphene type classes. Unfortunately, Graphene doesn't
     :param args:
     :param kwargs:
     :return: A lambda for A Graphene Field to create the InputType subclass. The lambda needs a crud type
     """
-    return lambda crud: graphene.InputField(input_type_class(field_dict_value, crud), *args, **kwargs)
+    return lambda crud: graphene.InputField(input_type_class(field_dict_value, crud, parent_type_classes), *args, **kwargs)
 
 
 @R.curry
-def related_input_field_for_crud_type(field_dict_value, crud):
+def related_input_field_for_crud_type(field_dict_value, parent_type_classes, crud):
     """
         Resolved the foreign key input field for the given crud type
-    :param field: The Django Field
     :param field_dict_value: The corresponding field dict value. This must exist and have a graphene_type
     that matches the Django model and it must have a fields property that is a field_dict for that relation
     :param crud: CREATE or UPDATE
+    :param parent_type_classes: String or String array of parent graphene type classes. Unfortunately, Graphene doesn't
     :return:
     """
-    return lambda *args, **kwargs: related_input_field(field_dict_value, *args, **kwargs)(crud)
+    return lambda *args, **kwargs: related_input_field(field_dict_value, parent_type_classes, *args, **kwargs)(crud)
 
 
-def django_to_graphene_type(field, field_dict_value):
+def django_to_graphene_type(field, field_dict_value, parent_type_classes):
     """
         Resolve the actual AutoField type. I can't find a good way to do this
     :param field: The Django Field
     :param field_dict_value: The corresponding field_dict value if it exists. This required for related fields.
     For related fields it must containt field_dict_value.graphene_type, which is the graphene type for that field
     as well as a fields property which is the fields_dict for that field
+    :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :return:
     """
     if R.prop_or(False, 'graphene_type', field_dict_value or {}):
         # This is detected as a lambda and called first with crud to establish what fields are needed in the
         # dynamic InputField subclass. Then another lambda is returned expecting args and kwargs, just like
         # the other graphene types above
-        return related_input_field_for_crud_type(field_dict_value)
+        return related_input_field_for_crud_type(field_dict_value, parent_type_classes)
 
     types = {
         AutoField: graphene.Int,
@@ -180,7 +193,7 @@ def django_to_graphene_type(field, field_dict_value):
 
 
 
-def process_field(field_to_unique_field_groups, field, field_dict_value):
+def process_field(field_to_unique_field_groups, field, field_dict_value, parent_type_classes):
     """
         Process Django field for important properties like type and uniqueness
     :param field_to_unique_field_groups:
@@ -189,6 +202,7 @@ def process_field(field_to_unique_field_groups, field, field_dict_value):
     That need fields for making an InputType subclass. When used the field_dict_value
     must have a graphene_type property that is a graphene type and fields property that is a field_dict for that relation
     or a type property that resolves to a graphene type whose fields are the same no matter the crud operation
+    :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :return: A dict with the unique property and anything else we need
     """
     unique = R.compact([
@@ -201,14 +215,14 @@ def process_field(field_to_unique_field_groups, field, field_dict_value):
     # we specify the type property on field_dict_value, which takes precedence
     return dict(
         # Resolves to a lambda that expects a crud value and then returns a lamda that expects args
-        type=django_to_graphene_type(field, field_dict_value),
+        type=django_to_graphene_type(field, field_dict_value, parent_type_classes),
         # This tells that the relation is based on a Django class
         django_type=R.item_path_or(None, ['graphene_type', '_meta', 'model'], field_dict_value),
         unique=unique
     )
 
 
-def parse_django_class(model, field_dict):
+def parse_django_class(model, field_dict, parent_type_classes=[]):
     """
         Parse the fields of a Django model to merge important properties with
         a graphene field_dict
@@ -236,7 +250,7 @@ def parse_django_class(model, field_dict):
             # Key by file.name
             field.name,
             # Process each field
-            process_field(field_to_unique_field_groups, field, R.prop(field.name, field_dict))
+            process_field(field_to_unique_field_groups, field, R.prop(field.name, field_dict), parent_type_classes)
         ],
         # Only accept model fields that are defined in field_dict
         R.filter(
@@ -259,14 +273,15 @@ def merge_with_django_properties(graphene_type, field_dict):
         field_dict,
         R.pick(
             R.keys(field_dict),
-            parse_django_class(graphene_type._meta.model, field_dict))
+            parse_django_class(graphene_type._meta.model, field_dict, graphene_type))
     )
 
 
-def allowed_query_arguments(fields_dict):
+def allowed_query_arguments(fields_dict, graphene_type):
     """
         Returns fields that can be queried
     :param fields_dict: The fields_dict for the Django model
+    :param graphen_type: Type used for emboded input class naming
     :return:
     """
     return R.map_dict(
@@ -277,7 +292,7 @@ def allowed_query_arguments(fields_dict):
             # be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
             # graphql: users: (name: "Peter", group: {role: "admin"})
             # https://github.com/graphql-python/graphene/issues/431
-            input_type_class(value, READ)(),
+            input_type_class(value, READ, graphene_type)(),
         R.filter_dict(
             lambda key_value:
             # Only; accept Scalars. We don't need Relations because they are done automatically by graphene
@@ -304,7 +319,7 @@ def guess_update_or_create(fields_dict):
     return CREATE
 
 
-def instantiate_graphene_type(value, crud):
+def instantiate_graphene_type(value, parent_type_classes, crud):
     """
         Instantiates the Graphene type at value.type. Most of the time the type is a primitive and
         doesn't need to be mapped to an input type. If the type is an ObjectType, we need to dynamically
@@ -312,6 +327,7 @@ def instantiate_graphene_type(value, crud):
     :param value: Dict containing type and possible crud fields like value['create'] and value['update']
     These optional values indicate if a field is required
     :param crud:
+    :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :return:
     """
     graphene_type = R.prop('type', value)
@@ -319,7 +335,7 @@ def instantiate_graphene_type(value, crud):
     if inspect.isclass(graphene_type) and issubclass(graphene_type, (ObjectType)):
         # ObjecTypes must be converted to a dynamic InputTypeVersion
         fields = R.prop('fields', value)
-        resolved_graphene_type = input_type_class(dict(graphene_type=graphene_type, fields=fields), crud)
+        resolved_graphene_type = input_type_class(dict(graphene_type=graphene_type, fields=fields), crud, parent_type_classes)
     else:
         # If a lambda is returned we have an InputType subclass that needs to know the crud type
         resolved_graphene_type = graphene_type(crud) if R.isfunction(graphene_type) else graphene_type
@@ -336,15 +352,16 @@ def instantiate_graphene_type(value, crud):
         )
 
 
-def input_type_fields(fields_dict, crud=None):
+def input_type_fields(fields_dict, crud, parent_type_classes=[]):
     """
     :param fields_dict: The fields_dict for the Django model
-    :param crud: INSERT, UPDATE, or DELETE. If not specified, guess based on the fields given
+    :param crud: INSERT, UPDATE, or DELETE. If None the type is guessed
+    :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :return:
     """
     crud = crud or guess_update_or_create(fields_dict)
     return R.map_dict(
-        lambda value: instantiate_graphene_type(value, crud),
+        lambda value: instantiate_graphene_type(value, parent_type_classes, crud),
         # Filter out values that are deny
         # This means that if the user tries to pass these fields to graphql an error will occur
         R.filter_dict(

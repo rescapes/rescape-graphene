@@ -2,7 +2,9 @@ import graphene
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from graphene.test import Client
-from .sample_schema import user_fields
+from rescape_graphene import UserType
+
+from .sample_schema import user_fields, FooType
 
 from .sample_schema import schema, foo_fields
 from .schema_helpers import allowed_query_arguments, input_type_fields, CREATE, UPDATE, \
@@ -33,16 +35,16 @@ class SchemaHelpersTypeCase(TestCase):
     # root_value={'user': 'Peter'}
     # variable_values={'user': 'Peter'}
     def test_query_fields(self):
-        self.assertMatchSnapshot(list(R.keys(allowed_query_arguments(user_fields))))
-        self.assertMatchSnapshot(list(R.keys(allowed_query_arguments(foo_fields))))
+        self.assertMatchSnapshot(list(R.keys(allowed_query_arguments(user_fields, UserType))))
+        self.assertMatchSnapshot(list(R.keys(allowed_query_arguments(foo_fields, UserType))))
 
     def test_create_fields(self):
-        self.assertMatchSnapshot(list(R.keys(input_type_fields(user_fields, CREATE))))
-        self.assertMatchSnapshot(list(R.keys(input_type_fields(foo_fields, CREATE))))
+        self.assertMatchSnapshot(list(R.keys(input_type_fields(user_fields, CREATE, UserType))))
+        self.assertMatchSnapshot(list(R.keys(input_type_fields(foo_fields, CREATE, FooType))))
 
     def test_update_fields(self):
-        self.assertMatchSnapshot(list(R.keys(input_type_fields(user_fields, UPDATE))))
-        self.assertMatchSnapshot(list(R.keys(input_type_fields(foo_fields, UPDATE))))
+        self.assertMatchSnapshot(list(R.keys(input_type_fields(user_fields, UPDATE, UserType))))
+        self.assertMatchSnapshot(list(R.keys(input_type_fields(foo_fields, UPDATE, FooType))))
 
     def test_update_fields_for_create_or_update(self):
         values = dict(email="dino@barn.farm", username="dino", first_name='T', last_name='Rex',
