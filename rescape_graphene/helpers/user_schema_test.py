@@ -1,6 +1,6 @@
 import logging
 
-from functional import ramda as R
+from ..functional import ramda as R
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from graphene.test import Client

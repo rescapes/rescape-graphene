@@ -8,7 +8,7 @@ from .sample_schema import schema, foo_fields
 from .schema_helpers import allowed_query_arguments, input_type_fields, CREATE, UPDATE, \
     input_type_parameters_for_update_or_create, merge_with_django_properties, REQUIRE, DENY
 from snapshottest import TestCase
-from functional import ramda as R
+from ..functional import ramda as R
 
 class SchemaHelpersTypeCase(TestCase):
     client = None

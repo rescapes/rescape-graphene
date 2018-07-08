@@ -4,7 +4,7 @@ from decimal import Decimal
 import graphene
 from django.contrib.gis.db.models import GeometryField
 
-from functional import ramda as R
+from ..functional import ramda as R
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
