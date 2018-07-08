@@ -1,3 +1,4 @@
+from graphql_geojson import Geometry
 from inflection import camelize
 from graphene import ObjectType, Scalar
 import inspect
@@ -49,7 +50,7 @@ def dump_graphene_type(key, value):
 
     typ = R.prop('type', value)
     return handleGrapheneTypes(key, value) if \
-        R.isfunction(typ) or (inspect.isclass(typ) and issubclass(typ, (Scalar, ObjectType))) else \
+        R.isfunction(typ) or (inspect.isclass(typ) and issubclass(typ, (Geometry, ObjectType))) else \
         camelize(key, False)
 
 
