@@ -109,8 +109,8 @@ def input_type_class(field_dict_value, crud, parent_type_classes=[]):
             ) if hasattr(graphene_class._meta, 'model') else
             field_dict_value['fields'],
             crud,
-            # Keep our naming unique by appending parent classes
-            R.concat(modified_parent_type_classes, [graphene_class])
+            # Keep our naming unique by appending parent classes, ordered newest to oldest
+            R.concat([graphene_class], modified_parent_type_classes)
         )
     )
 
