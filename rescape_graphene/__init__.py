@@ -15,7 +15,7 @@ from .helpers.schema_helpers import (
     graphql_update_or_create
 )
 
-from .functional import ramda
+from .functional.ramda import *
 
 from .helpers.user_schema import (
     UserType,
