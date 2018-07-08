@@ -143,7 +143,7 @@ class Query(ObjectType):
     users = graphene.List(UserType)
     viewer = graphene.Field(
         UserType,
-        **allowed_query_arguments(user_fields)
+        **allowed_query_arguments(user_fields, UserType)
     )
 
     @login_required
