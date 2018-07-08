@@ -1,4 +1,4 @@
-from .schema_helpers import (
+from helpers.schema_helpers import (
     input_type_class,
     related_input_field,
     related_input_field_for_crud_type,
@@ -15,9 +15,9 @@ from .schema_helpers import (
     graphql_update_or_create
 )
 
-from .ramda import *
+from functional import ramda
 
-from .user_schema import (
+from helpers.user_schema import (
     UserType,
     UpsertUser,
     CreateUser,
@@ -31,11 +31,11 @@ from .user_schema import (
     graphql_refresh_token
 )
 
-from .json_field_helpers import resolver
+from helpers.json_field_helpers import resolver
 
 __all__ = [
-    'scehema_helpers',
-    'user_schema',
-    'ramda',
-    'json_field_helpers'
+    'helpers.scehema_helpers',
+    'helpers.user_schema',
+    'functional.ramda',
+    'helpers.json_field_helpers'
 ]

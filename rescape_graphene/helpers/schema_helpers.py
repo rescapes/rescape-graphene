@@ -4,7 +4,7 @@ from decimal import Decimal
 import graphene
 from django.contrib.gis.db.models import GeometryField
 
-from . import ramda as R
+from functional import ramda as R
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
@@ -203,7 +203,7 @@ def process_field(field_to_unique_field_groups, field, field_dict_value):
         # Resolves to a lambda that expects a crud value and then returns a lamda that expects args
         type=django_to_graphene_type(field, field_dict_value),
         # This tells that the relation is based on a Django class
-        class_type=R.item_path_or(None, ['graphene_type', '_meta', 'class_type'], field_dict_value),
+        django_type=R.item_path_or(None, ['graphene_type', '_meta', 'model'], field_dict_value),
         unique=unique
     )
 
@@ -284,7 +284,7 @@ def allowed_query_arguments(fields_dict):
             # inspect.isclass(R.prop('type', value)) and issubclass(R.prop('type', value), Scalar) and
             # Don't allow DENYd READs
             R.and_func(
-                not R.prop_or(False, 'class_type', key_value[1]),
+                not R.prop_or(False, 'django_type', key_value[1]),
                 R.not_func(R.prop_eq_or_in(READ, DENY, key_value[1]))
             ),
             fields_dict
@@ -372,13 +372,13 @@ def input_type_parameters_for_update_or_create(fields_dict, values):
     return dict(
         # defaults are for updating/inserting
         defaults=R.filter_dict(
-            lambda key_value: R.not_func(R.length(R.item_path([key_value[0], 'unique'], fields_dict))),
+            lambda key_value: R.not_func(R.length(R.item_path_or([], [key_value[0], 'unique'], fields_dict))),
             values
         ),
         # rest are for checking uniqueness and if unique for inserting as well
         # this matches Django Query's update_or_create
         **R.filter_dict(
-            lambda key_value: R.length(R.item_path([key_value[0], 'unique'], fields_dict)),
+            lambda key_value: R.length(R.item_path_or([], [key_value[0], 'unique'], fields_dict)),
             values
         )
     )
