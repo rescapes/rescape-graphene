@@ -1,5 +1,5 @@
 from inflection import camelize
-from graphene import ObjectType
+from graphene import ObjectType, Scalar
 import inspect
 from ..functional import ramda as R
 import numbers
@@ -48,9 +48,8 @@ def dump_graphene_type(key, value):
     """
 
     typ = R.prop('type', value)
-    # For some reason issubclass isn't working here
     return handleGrapheneTypes(key, value) if \
-        R.isfunction(typ) or (inspect.isclass(typ) and typ.__bases__[0] == ObjectType) else \
+        R.isfunction(typ) or (inspect.isclass(typ) and issubclass(typ, (Scalar, ObjectType))) else \
         camelize(key, False)
 
 

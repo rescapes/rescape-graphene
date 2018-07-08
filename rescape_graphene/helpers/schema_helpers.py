@@ -330,7 +330,11 @@ def instantiate_graphene_type(value, parent_type_classes, crud):
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :return:
     """
-    graphene_type = R.prop('type', value)
+    graphene_type = R.prop_or(None, 'type', value)
+    if not graphene_type:
+        raise Exception("No type pareamter found on the field value. This usually means that a field was defined in the"
+                        " field_dict that has no corresponding django field. To define a field with no corresponding"
+                        " Django field, you must give the field a type parameter that is set to a GraphneType subclass")
     graphene_type_modifier = R.prop_or(None, 'type_modifier', value)
     if inspect.isclass(graphene_type) and issubclass(graphene_type, (ObjectType)):
         # ObjecTypes must be converted to a dynamic InputTypeVersion
