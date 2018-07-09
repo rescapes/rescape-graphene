@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import graphene
 from django.contrib.gis.db.models import GeometryField
+from graphql_geojson import Geometry
 
 from ..functional import ramda as R
 from django.contrib.postgres.fields import JSONField
@@ -338,8 +339,8 @@ def instantiate_graphene_type(value, parent_type_classes, crud):
                         " field_dict that has no corresponding django field. To define a field with no corresponding"
                         " Django field, you must give the field a type parameter that is set to a GraphneType subclass")
     graphene_type_modifier = R.prop_or(None, 'type_modifier', value)
-    if inspect.isclass(graphene_type) and issubclass(graphene_type, (ObjectType)):
-        # ObjecTypes must be converted to a dynamic InputTypeVersion
+    if inspect.isclass(graphene_type) and issubclass(graphene_type, (Geometry, ObjectType)):
+        # Geometry and ObjectTypes must be converted to a dynamic InputTypeVersion
         fields = R.prop('fields', value)
         resolved_graphene_type = input_type_class(dict(graphene_type=graphene_type, fields=fields), crud,
                                                   parent_type_classes)
