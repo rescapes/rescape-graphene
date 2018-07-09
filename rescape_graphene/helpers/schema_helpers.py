@@ -87,7 +87,8 @@ def input_type_class(field_dict_value, crud, parent_type_classes=[]):
     # Otherwise it comes from type, since we don't need type for the Django model
     graphene_class = field_dict_value['graphene_type'] or field_dict_value['type']
     # Make it an array if not
-    modified_parent_type_classes = parent_type_classes if R.isinstance((list, tuple), parent_type_classes) else [parent_type_classes]
+    modified_parent_type_classes = parent_type_classes if R.isinstance((list, tuple), parent_type_classes) else [
+        parent_type_classes]
     return type(
         '%s%sRelated%sInputType' % (
             graphene_class.__name__,
@@ -130,7 +131,8 @@ def related_input_field(field_dict_value, parent_type_classes, *args, **kwargs):
     :param kwargs:
     :return: A lambda for A Graphene Field to create the InputType subclass. The lambda needs a crud type
     """
-    return lambda crud: graphene.InputField(input_type_class(field_dict_value, crud, parent_type_classes), *args, **kwargs)
+    return lambda crud: graphene.InputField(input_type_class(field_dict_value, crud, parent_type_classes), *args,
+                                            **kwargs)
 
 
 @R.curry
@@ -190,7 +192,6 @@ def django_to_graphene_type(field, field_dict_value, parent_type_classes):
         cls = cls.__bases__[0]
         match = R.prop_or(None, cls, types)
     return match
-
 
 
 def process_field(field_to_unique_field_groups, field, field_dict_value, parent_type_classes):
@@ -286,13 +287,14 @@ def allowed_query_arguments(fields_dict, graphene_type):
     """
     return R.map_dict(
         lambda value:
-            # If the type is a scalar, just instantiate
-            R.prop('type', value)() if inspect.isclass(R.prop('type', value)) and issubclass(R.prop('type', value), Scalar) else
-            # Otherwise created a related field InputType subclass. In order to query a nested object, it has to
-            # be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
-            # graphql: users: (name: "Peter", group: {role: "admin"})
-            # https://github.com/graphql-python/graphene/issues/431
-            input_type_class(value, READ, graphene_type)(),
+        # If the type is a scalar, just instantiate
+        R.prop('type', value)() if inspect.isclass(R.prop('type', value)) and issubclass(R.prop('type', value),
+                                                                                         Scalar) else
+        # Otherwise created a related field InputType subclass. In order to query a nested object, it has to
+        # be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
+        # graphql: users: (name: "Peter", group: {role: "admin"})
+        # https://github.com/graphql-python/graphene/issues/431
+        input_type_class(value, READ, graphene_type)(),
         R.filter_dict(
             lambda key_value:
             # Only; accept Scalars. We don't need Relations because they are done automatically by graphene
@@ -339,11 +341,11 @@ def instantiate_graphene_type(value, parent_type_classes, crud):
     if inspect.isclass(graphene_type) and issubclass(graphene_type, (ObjectType)):
         # ObjecTypes must be converted to a dynamic InputTypeVersion
         fields = R.prop('fields', value)
-        resolved_graphene_type = input_type_class(dict(graphene_type=graphene_type, fields=fields), crud, parent_type_classes)
+        resolved_graphene_type = input_type_class(dict(graphene_type=graphene_type, fields=fields), crud,
+                                                  parent_type_classes)
     else:
         # If a lambda is returned we have an InputType subclass that needs to know the crud type
         resolved_graphene_type = graphene_type(crud) if R.isfunction(graphene_type) else graphene_type
-
 
     # Instantiate using the type_modifier function if we need to wrap this in a List,
     # Otherwise instantiate and pass the required flat
@@ -390,17 +392,28 @@ def input_type_parameters_for_update_or_create(fields_dict, values):
     :return:
     """
 
+    # Convert foreign key dicts to their id, since Django expects the foreign key as an saved instance or id
+    # Example region = {id: 5} becomes region_id = 5
+    # This assumes id is the pk
+    modified_values = R.map_key_values(
+        lambda key, value: ['%s_id' % key, R.prop('id', value)] if
+            R.prop_or(False, 'django_type', fields_dict[key]) else
+            [key, value],
+        values
+    )
+
+    # TODO Convert foreign key objects to their id
     return dict(
         # defaults are for updating/inserting
         defaults=R.filter_dict(
             lambda key_value: R.not_func(R.length(R.item_path_or([], [key_value[0], 'unique'], fields_dict))),
-            values
+            modified_values
         ),
         # rest are for checking uniqueness and if unique for inserting as well
         # this matches Django Query's update_or_create
         **R.filter_dict(
             lambda key_value: R.length(R.item_path_or([], [key_value[0], 'unique'], fields_dict)),
-            values
+            modified_values
         )
     )
 

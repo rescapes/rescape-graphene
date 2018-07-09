@@ -52,10 +52,12 @@ class SchemaHelpersTypeCase(TestCase):
                       password=make_password("rrrrhhh", salt='not_random'))
         self.assertMatchSnapshot(input_type_parameters_for_update_or_create(user_fields, values))
 
-        values = dict(key='fooKey',
+        foo_values = dict(key='fooKey',
                       name='Foo Name',
-                      user=get_user_model()(**values),
+                      # Pretend this is a saved user id
+                      user=dict(id=5),
                       data =dict(example=2.2))
-        self.assertMatchSnapshot(input_type_parameters_for_update_or_create(user_fields, values))
-        # def test_delete(self):
-        #    self.assertMatchSnapshot(delete_fields(user_fields))
+        self.assertMatchSnapshot(input_type_parameters_for_update_or_create(foo_fields, foo_values))
+
+    # def test_delete(self):
+    #    self.assertMatchSnapshot(delete_fields(user_fields))
