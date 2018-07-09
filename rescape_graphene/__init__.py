@@ -1,4 +1,4 @@
-from .helpers.schema_helpers import (
+from .graphql_helpers.schema_helpers import (
     input_type_class,
     related_input_field,
     related_input_field_for_crud_type,
@@ -16,9 +16,13 @@ from .helpers.schema_helpers import (
     DENY, CREATE, UNIQUE, UPDATE, ALLOW, DELETE, REQUIRE, READ, PRIMARY
 )
 
+from .dango_helpers.write_helpers import (
+    increment_prop_until_unique
+)
+
 from .functional import ramda
 
-from .helpers.user_schema import (
+from .user.user_schema import (
     UserType,
     UpsertUser,
     CreateUser,
@@ -32,7 +36,7 @@ from .helpers.user_schema import (
     graphql_refresh_token
 )
 
-from .helpers.json_field_helpers import resolver
+from .graphql_helpers.json_field_helpers import resolver
 
 __all__ = [
     'helpers.scehema_helpers',
