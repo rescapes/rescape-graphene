@@ -1,5 +1,5 @@
 from snapshottest import TestCase
-from functional import ramda as R
+from .functional import ramda as R
 
 
 class TestRamda(TestCase):
