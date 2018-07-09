@@ -33,15 +33,15 @@ def prop_or(default, key, dct_or_obj):
     """
         Ramda propOr implementation. This also resolves object attributes, so key
         can be a dict prop or an attribute of dct_or_obj
-    :param default:
+    :param default: Value if dct_or_obj doesn't have key_or_prop or the resolved value is null
     :param key:
     :param dct_or_obj:
     :return:
     """
     # Note that hasattr is a builtin and getattr is a ramda function, hence the different arg position:w
-    return dct_or_obj[key] if isinstance(dict, dct_or_obj) and key in dct_or_obj else \
-        (getattr(key, dct_or_obj) if hasattr(dct_or_obj, key) else default)
-
+    return (isinstance(dict, dct_or_obj) and has(key, dct_or_obj) and dct_or_obj[key]) or \
+        (hasattr(dct_or_obj, key) and (getattr(key, dct_or_obj))) or \
+        default
 
 @curry
 def prop_eq(key, value, dct):
