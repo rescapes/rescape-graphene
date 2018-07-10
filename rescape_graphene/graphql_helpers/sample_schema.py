@@ -11,7 +11,7 @@ from graphql_jwt.decorators import login_required
 from django.contrib.postgres.fields import JSONField
 from .json_field_helpers import resolver
 
-from user.user_schema import UserType, user_fields, CreateUser, UpdateUser
+from ..user.user_schema import UserType, user_fields, CreateUser, UpdateUser
 from .schema_helpers import allowed_query_arguments, REQUIRE, merge_with_django_properties, guess_update_or_create, \
     CREATE, UPDATE, input_type_parameters_for_update_or_create, graphql_update_or_create, graphql_query, \
     input_type_fields, DENY

@@ -40,7 +40,7 @@ def prop_or(default, key, dct_or_obj):
     """
     # Note that hasattr is a builtin and getattr is a ramda function, hence the different arg position:w
     return (isinstance(dict, dct_or_obj) and has(key, dct_or_obj) and dct_or_obj[key]) or \
-        (hasattr(dct_or_obj, key) and (getattr(key, dct_or_obj))) or \
+        (not isinstance(dict, dct_or_obj) and hasattr(dct_or_obj, key) and (getattr(key, dct_or_obj))) or \
         default
 
 @curry
@@ -168,6 +168,35 @@ def omit_deep(omit_props, dct):
     # scalar
     return dct
 
+@curry
+def map_deep(map_props, dct):
+    """
+    Implementation of omit that recurses. This tests the same keys at every level of dict and in lists
+    :param map_props: prop to unary function to map the value of a prop. The props are evaluated at every level
+    of dct
+    :param dct: Dict for deep processing
+    :return: Modified dct with matching props mapped
+    """
+
+    map_deep_partial = map_deep(map_props)
+
+    def test(key, value):
+        return prop_or( always(value), key, map_props)(value)
+
+    if isinstance(dict, dct):
+        # Filter out keys and then recurse on each value that wasn't filtered out
+        return map_dict(map_deep_partial, compact_dict(
+            map_with_obj(
+                # Lambda calls map_props[key](value) if map_props[key] exists, else returns value
+                lambda key, value: test(key, value),
+                dct
+            )
+        ))
+    if isinstance((list, tuple), dct):
+        # run map_deep on each value
+        return map(map_deep_partial, dct)
+    # scalar
+    return dct
 
 @curry
 def join(strin, items):

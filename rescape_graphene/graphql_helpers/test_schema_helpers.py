@@ -1,3 +1,5 @@
+import inspect
+
 import graphene
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
@@ -29,7 +31,10 @@ class SchemaHelpersTypeCase(TestCase):
             lambda value: R.merge(value, dict(type=R.prop('type', value).__name__)),
             foo_fields
         )
-        self.assertMatchSnapshot(foo_results)
+        def map_type(t):
+            return t.__name__ if inspect.isclass(t) else t
+
+        self.assertMatchSnapshot(R.map_deep(dict(type=map_type, graphene_type=map_type, django_type=map_type), R.omit_deep(['default'], foo_results)))
 
     # context_value={'user': 'Peter'}
     # root_value={'user': 'Peter'}

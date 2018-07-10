@@ -1,4 +1,5 @@
 import inspect
+import logging
 from decimal import Decimal
 
 import graphene
@@ -17,6 +18,7 @@ from inflection import camelize
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
 import graphql_geojson
+logger = logging.getLogger('rescape_graphene')
 
 DENY = 'deny'
 # Indicates a CRUD operation is required to use this field
@@ -466,6 +468,7 @@ def graphql_query(query_name, fields):
             ) if variable_definitions else '',
             dump_graphql_keys(field_overrides or fields)
         )
+        logger.debug('Query: %s\nKwargs: %s' % (query, kwargs))
         return client.execute(query, **kwargs)
 
     return form_query
@@ -491,10 +494,10 @@ def graphql_update_or_create(mutation_config, fields, client, values):
     :return:
     """
     update_or_create = guess_update_or_create(values)
-    # We name the mustation classNameMutation and the parameter classNameData
+    # We name the mutation classNameMutation and the parameter classNameData
     # where className is the camel-case version of the given class name in mutation_config.class_name
     name = camelize(R.prop('class_name', mutation_config), False)
-    return client.execute(''' 
+    mutation = ''' 
         mutation %sMutation {
             %s(%sData: %s) {
                 %s {
@@ -510,4 +513,6 @@ def graphql_update_or_create(mutation_config, fields, client, values):
         dump_graphql_data_object(values),
         name,
         dump_graphql_keys(fields)
-    ))
+    )
+    logger.debug('Mutation: %s' % mutation)
+    return client.execute(mutation)

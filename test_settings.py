@@ -162,6 +162,11 @@ LOGGING = {
             'handlers': ['django_info', 'console'],
             'propagate': True,
             'level': 'INFO',
+        },
+        'rescape_graphene': {
+            'handlers': ['django_info', 'console'],
+            'propagate': True,
+            'level': 'INFO',
         }
     },
 }

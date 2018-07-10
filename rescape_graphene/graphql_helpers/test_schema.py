@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from graphene.test import Client
 from .sample_schema import schema
 from snapshottest import TestCase
-from user.user_schema import graphql_update_or_create_user, graphql_query_users
+from ..user.user_schema import graphql_update_or_create_user, graphql_query_users
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -32,6 +32,7 @@ class GenaralTypeCase(TestCase):
 
     def setUp(self):
         self.client = Client(schema)
+        User.objects.all().delete()
         User.objects.update_or_create(username="lion", first_name='Simba', last_name='The Lion',
                                       password=make_password("roar", salt='not_random'))
         User.objects.update_or_create(username="cat", first_name='Felix', last_name='The Cat',
