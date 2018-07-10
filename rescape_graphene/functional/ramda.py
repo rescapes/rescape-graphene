@@ -157,17 +157,17 @@ def omit_deep(omit_props, dct):
     :return:
     """
 
-    def omit(k, v):
-        value = v if k not in omit_props else None
-        if value and isinstance(dict, value):
-            # recurse on this dict
-            return omit_deep(omit_props, value)
-        if value and isinstance((list, tuple), value):
-            # run omit_deep on each value
-            return map(omit_deep(omit_props), value)
-        return value
+    omit_partial = omit_deep(omit_props)
 
-    return compact_dict(map_with_obj(omit, dct))
+    if isinstance(dict, dct):
+        # Filter out keys and then recurse on each value that wasn't filtered out
+        return map_dict(omit_partial, compact_dict(omit(omit_props, dct)))
+    if isinstance((list, tuple), dct):
+        # run omit_deep on each value
+        return map(omit_partial, dct)
+    # scalar
+    return dct
+
 
 @curry
 def join(strin, items):

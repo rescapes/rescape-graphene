@@ -31,5 +31,5 @@ class TestRamda(TestCase):
 
     def test_omit_deep(self):
         omit_keys = ['foo', 'bar']
-        dct = dict(foo=1, bar=2, car=dict(foo=3, bar=4, tar=5, pepper=[dict(achoo=1, bar=2), dict(kale=1, foo=2)]))
-        assert R.omit_deep(omit_keys, dct) == dict(car=dict(tar=5, pepper=[dict(achoo=1), dict(kale=1)]))
+        dct = dict(foo=1, bar=2, car=dict(foo=3, bar=4, tar=5, pepper=[[dict(achoo=1, bar=2), dict(kale=1, foo=2)]]))
+        assert R.omit_deep(omit_keys, dct) == dict(car=dict(tar=5, pepper=[[dict(achoo=1), dict(kale=1)]]))
