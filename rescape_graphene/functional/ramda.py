@@ -148,6 +148,26 @@ def omit(omit_props, dct):
     """
     return filter_dict(lambda key_value: key_value[0] not in omit_props, dct)
 
+@curry
+def omit_deep(omit_props, dct):
+    """
+    Implementation of omit that recurses. This tests the same keys at every level of dict and in lists
+    :param omit_props:
+    :param dct:
+    :return:
+    """
+
+    def omit(k, v):
+        value = v if k not in omit_props else None
+        if value and isinstance(dict, value):
+            # recurse on this dict
+            return omit_deep(omit_props, value)
+        if value and isinstance((list, tuple), value):
+            # run omit_deep on each value
+            return map(omit_deep(omit_props), value)
+        return value
+
+    return compact_dict(map_with_obj(omit, dct))
 
 @curry
 def join(strin, items):
@@ -182,8 +202,7 @@ def head(lst):
 def map_with_obj(f, dct):
     """
         Implementation of Ramda's mapObjIndexed without the final argument.
-        This returns the original key with the mapped value, so return a key/value pair and take the values
-        to also update the keys
+        This returns the original key with the mapped value. Use map_key_values to modify the keys too
     :param f:
     :param dct:
     :return:
