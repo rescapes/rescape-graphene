@@ -17,7 +17,8 @@ from .graphql_helpers.schema_helpers import (
 )
 
 from .django_helpers.write_helpers import (
-    increment_prop_until_unique
+    increment_prop_until_unique,
+    enforce_unique_props
 )
 
 from .functional import ramda
