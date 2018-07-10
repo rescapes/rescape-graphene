@@ -1,12 +1,12 @@
 import graphene
-from rescape_graphene import increment_prop_until_unique
+from ..django_helpers.write_helpers import increment_prop_until_unique
 
 from ..functional import ramda as R
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from graphene import InputObjectType
 from graphene_django.types import DjangoObjectType
-from graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
+from ..graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
     merge_with_django_properties, input_type_parameters_for_update_or_create, UPDATE, \
     guess_update_or_create, graphql_update_or_create, graphql_query
 

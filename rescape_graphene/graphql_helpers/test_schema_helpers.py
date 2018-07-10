@@ -2,7 +2,7 @@ import graphene
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from graphene.test import Client
-from rescape_graphene import UserType
+from ..user.user_schema import UserType
 
 from .sample_schema import user_fields, FooType
 

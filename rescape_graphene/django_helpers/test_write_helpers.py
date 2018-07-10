@@ -1,13 +1,13 @@
 from unittest import TestCase
 
-from rescape_graphene import user_fields
+from ..user.user_schema import user_fields
 
 from .write_helpers import increment_prop_until_unique, enforce_unique_props
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 
 
-class WriteTestCase(TestCase):
+class WriteHelpersTestCase(TestCase):
     client = None
 
     def setUp(self):

@@ -33,8 +33,9 @@ def increment_prop_until_unique(django_class, strategy, prop, django_instance_da
         **{'%s__startswith' % prop: prop_value}
     ).values_list(prop, flat=True)
 
-    success = None
+    success = prop_value
     for i, matching_key in enumerate(matching_values):
+        success = None
         attempt = strategy(matching_values, prop_value, i)
         if attempt not in matching_values:
             success = attempt
@@ -58,9 +59,9 @@ def enforce_unique_props(property_fields, django_instance_data):
     # If any prop needs to be unique then run its unique_with function, which updates it to a unique value
     # By querying the database for duplicate. This is mainly for non-pk fields like a key
     return R.reduce(
-        lambda reduced, prop_value: django_instance_data['unique_with'](reduced) if
+        lambda reduced, prop_value: prop_value['unique_with'](reduced) if
         R.prop_or(False, 'unique_with', prop_value) else
         reduced,
-        R.values(property_fields),
-        django_instance_data
+        django_instance_data,
+        R.values(property_fields)
     )

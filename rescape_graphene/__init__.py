@@ -16,7 +16,7 @@ from .graphql_helpers.schema_helpers import (
     DENY, CREATE, UNIQUE, UPDATE, ALLOW, DELETE, REQUIRE, READ, PRIMARY
 )
 
-from .dango_helpers.write_helpers import (
+from .django_helpers.write_helpers import (
     increment_prop_until_unique
 )
 
@@ -42,5 +42,7 @@ __all__ = [
     'helpers.scehema_helpers',
     'helpers.user_schema',
     'functional.ramda',
-    'helpers.json_field_helpers'
+    'graphql_helpers.json_field_helpers'
+    'django_helpers.write_helpers'
+    'user.user_schema'
 ]
