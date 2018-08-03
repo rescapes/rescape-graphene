@@ -1,5 +1,6 @@
 import inspect
 import logging
+import sys
 from decimal import Decimal
 
 import graphene
@@ -44,6 +45,15 @@ READ = 'read'
 UPDATE = 'update'
 DELETE = 'delete'
 
+# https://github.com/graphql-python/graphene-django/issues/124
+class ErrorMiddleware(object):
+    def on_error(self, error):
+        err = sys.exc_info()
+        logging.error(error)
+        return err[1]
+
+    def resolve(self, next, root, args, context, info):
+        return next(root, args, context, info).catch(self.on_error)
 
 # https://github.com/graphql-python/graphene-django/issues/91
 class Decimal(Scalar):
@@ -337,7 +347,7 @@ def instantiate_graphene_type(value, parent_type_classes, crud):
     """
     graphene_type = R.prop_or(None, 'type', value)
     if not graphene_type:
-        raise Exception("No type pareamter found on the field value. This usually means that a field was defined in the"
+        raise Exception("No type parameter found on the field value. This usually means that a field was defined in the"
                         " field_dict that has no corresponding django field. To define a field with no corresponding"
                         " Django field, you must give the field a type parameter that is set to a GraphneType subclass")
     graphene_type_modifier = R.prop_or(None, 'type_modifier', value)
@@ -516,3 +526,6 @@ def graphql_update_or_create(mutation_config, fields, client, values):
     )
     logger.debug('Mutation: %s' % mutation)
     return client.execute(mutation)
+
+
+

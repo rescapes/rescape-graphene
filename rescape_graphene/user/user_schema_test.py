@@ -19,7 +19,7 @@ class UserTypeCase(TestCase):
 
     def setUp(self):
         # Prevent a circular dependency
-        from .sample_schema import schema
+        from ..graphql_helpers.sample_schema import schema
         self.client = Client(schema)
         User.objects.update_or_create(username="lion", first_name='Simba', last_name='The Lion',
                                       password=make_password("roar", salt='not_random'))

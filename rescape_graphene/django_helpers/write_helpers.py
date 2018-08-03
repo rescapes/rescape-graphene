@@ -28,7 +28,7 @@ def increment_prop_until_unique(django_class, strategy, prop, django_instance_da
         # Ignore value matching the pk if this is an update operation.
         # In other words we can update the key to what it already is, aka do nothing
         *R.compact([
-            ~Q(id__no=pk) if pk else None,
+            ~Q(id=pk) if pk else None,
         ]),
         **{'%s__startswith' % prop: prop_value}
     ).values_list(prop, flat=True)
@@ -56,6 +56,7 @@ def enforce_unique_props(property_fields, django_instance_data):
     :param django_instance_data: dict of an instance to be created or updated
     :return: The modified django_instance_data for any property that needs to have a unique value
     """
+
     # If any prop needs to be unique then run its unique_with function, which updates it to a unique value
     # By querying the database for duplicate. This is mainly for non-pk fields like a key
     return R.reduce(

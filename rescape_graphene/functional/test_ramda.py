@@ -33,3 +33,12 @@ class TestRamda(TestCase):
         omit_keys = ['foo', 'bar']
         dct = dict(foo=1, bar=2, car=dict(foo=3, bar=4, tar=5, pepper=[[dict(achoo=1, bar=2), dict(kale=1, foo=2)]]))
         assert R.omit_deep(omit_keys, dct) == dict(car=dict(tar=5, pepper=[[dict(achoo=1), dict(kale=1)]]))
+
+    def test_prop(self):
+        assert R.prop('obazda', dict(obazda='dip')) == 'dip'
+
+        # Try with a mix of dict and obj
+        class Radish(object):
+            def __init__(self, cut):
+                self.garnish = cut
+        assert R.prop('garnish', Radish('spiraled')) == 'spiraled'

@@ -4,9 +4,17 @@ from deepmerge import Merger
 from pyramda import *
 from json import dumps
 
-# Correcting to match ramda name
-prop = getitem
 
+def prop(key, dct_or_obj):
+    """
+        Implementation of prop (get_item) that also supports object attributes
+    :param key:
+    :param dct_or_obj:
+    :return:
+    """
+    return (isinstance(dict, dct_or_obj) and has(key, dct_or_obj) and getitem(key, dct_or_obj) or
+            (not isinstance(dict, dct_or_obj) and hasattr(dct_or_obj, key) and (getattr(key, dct_or_obj)))
+            )
 
 @curry
 def filter_dict(f, dct):
@@ -38,10 +46,11 @@ def prop_or(default, key, dct_or_obj):
     :param dct_or_obj:
     :return:
     """
-    # Note that hasattr is a builtin and getattr is a ramda function, hence the different arg position:w
+    # Note that hasattr is a builtin and getattr is a ramda function, hence the different arg position
     return (isinstance(dict, dct_or_obj) and has(key, dct_or_obj) and dct_or_obj[key]) or \
-        (not isinstance(dict, dct_or_obj) and hasattr(dct_or_obj, key) and (getattr(key, dct_or_obj))) or \
-        default
+           (not isinstance(dict, dct_or_obj) and hasattr(dct_or_obj, key) and (getattr(key, dct_or_obj))) or \
+           default
+
 
 @curry
 def prop_eq(key, value, dct):
@@ -78,6 +87,7 @@ def prop_eq_or_in(key, value, dct):
     :return:
     """
     return prop_eq_or_in_or(False, key, value, dct)
+
 
 @curry
 def prop_eq_or_in_or(default, key, value, dct):
@@ -124,9 +134,11 @@ def item_path_or(default, keys, dict_or_obj):
         current_value = prop_or(default, key, default_to({}, current_value))
     return current_value
 
+
 @curry
 def item_str_path(keys, dct):
     return item_path(keys.split('.'), dct)
+
 
 @curry
 def has(prop, object_or_dct):
@@ -138,6 +150,7 @@ def has(prop, object_or_dct):
     """
     return prop in object_or_dct if isinstance(dict, object_or_dct) else hasattr(object_or_dct, prop)
 
+
 @curry
 def omit(omit_props, dct):
     """
@@ -147,6 +160,7 @@ def omit(omit_props, dct):
     :return:
     """
     return filter_dict(lambda key_value: key_value[0] not in omit_props, dct)
+
 
 @curry
 def omit_deep(omit_props, dct):
@@ -168,6 +182,7 @@ def omit_deep(omit_props, dct):
     # scalar
     return dct
 
+
 @curry
 def map_deep(map_props, dct):
     """
@@ -181,7 +196,7 @@ def map_deep(map_props, dct):
     map_deep_partial = map_deep(map_props)
 
     def test(key, value):
-        return prop_or( always(value), key, map_props)(value)
+        return prop_or(always(value), key, map_props)(value)
 
     if isinstance(dict, dct):
         # Filter out keys and then recurse on each value that wasn't filtered out
@@ -197,6 +212,7 @@ def map_deep(map_props, dct):
         return map(map_deep_partial, dct)
     # scalar
     return dct
+
 
 @curry
 def join(strin, items):
@@ -267,7 +283,6 @@ def map_keys(f, dct):
     return f_dict
 
 
-
 def merge_dicts(*dict_args):
     """
     Given any number of dicts, shallow copy and merge into a new dict,
@@ -303,6 +318,7 @@ def merge_deep(dct1, dct2):
         ["override"]
     )
     return my_merger.merge(dct1, dct2)
+
 
 @curry
 def merge(dct1, dct2):
@@ -372,6 +388,7 @@ def fullname(o):
     :return:
     """
     return o.__module__ + "." + o.__class__.__name__
+
 
 def length(lst):
     """
