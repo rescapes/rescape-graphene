@@ -4,7 +4,7 @@ from deepmerge import Merger
 from pyramda import *
 from json import dumps
 
-
+@curry
 def prop(key, dct_or_obj):
     """
         Implementation of prop (get_item) that also supports object attributes
