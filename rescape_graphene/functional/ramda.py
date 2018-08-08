@@ -307,7 +307,7 @@ def merge_deep(dct1, dct2):
         # strategies you are looking to apply
         # to each type.
         [
-            (list, ["prepend"]),
+            (list, ["append"]),
             (dict, ["merge"])
         ],
         # next, choose the fallback strategies,
@@ -319,6 +319,19 @@ def merge_deep(dct1, dct2):
     )
     return my_merger.merge(dct1, dct2)
 
+
+def merge_deep_all(dcts):
+    """
+        Merge deep all dicts using merge_deep
+    :param dcts: 
+    :return: 
+    """""
+    
+    return reduce(
+        lambda accum, dct: merge_deep(accum, dct),
+        dict(),
+        dcts
+    )
 
 @curry
 def merge(dct1, dct2):

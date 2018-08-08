@@ -42,3 +42,14 @@ class TestRamda(TestCase):
             def __init__(self, cut):
                 self.garnish = cut
         assert R.prop('garnish', Radish('spiraled')) == 'spiraled'
+
+    def test_merge_deep_all(self):
+        assert R.merge_deep_all([
+            dict(a=1, zoo=dict(a=2, b=2)),
+            dict(a=2, zoo=dict(a=3, c=4, pen=dict(bull=False)), nursery=[1]),
+            dict(zoo=dict(d=4, e=4, pen=dict(cow=True)), nursery=[2]),
+        ]) == dict(
+            a=2,
+            zoo=dict(a=3, b=2, c=4, d=4, e=4, pen=dict(bull=False, cow=True)),
+            nursery=[1,2]
+        )
