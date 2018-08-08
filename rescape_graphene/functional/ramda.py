@@ -248,9 +248,9 @@ def map_with_obj(f, dct):
     """
         Implementation of Ramda's mapObjIndexed without the final argument.
         This returns the original key with the mapped value. Use map_key_values to modify the keys too
-    :param f:
+    :param f: Called with a key and value
     :param dct:
-    :return:
+    :return {dict}: Keyed by the original key, valued by the mapped value
     """
     f_dict = {}
     for k, v in dct.items():
@@ -258,11 +258,20 @@ def map_with_obj(f, dct):
     return f_dict
 
 
+def map_with_obj_to_values(f, dct):
+    """
+        Like map_with_obj but just returns the mapped values an array and disgards the keys
+    :param f: Called wiht a key and value
+    :param dct:
+    :return {list}: values are the mapped value
+    """
+    return list(values(map_with_obj(f, dct)))
+
 @curry
 def map_key_values(f, dct):
     """
         Like map_with_obj but expects a key value pair returned from f and uses it to form a new dict
-    :param f:
+    :param f: Called with a key and value
     :param dct:
     :return:
     """

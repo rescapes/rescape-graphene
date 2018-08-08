@@ -390,7 +390,7 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[]):
     )
 
 
-def input_type_parameters_for_update_or_create(fields_dict, values):
+def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value):
     """
         Returns the input_type fields for a mutation class in the form
         {
@@ -401,34 +401,43 @@ def input_type_parameters_for_update_or_create(fields_dict, values):
         and unique_fields are any fields are used for uniqueness check by Django's update_or_create.
         if nothing matches all unique_fields then update_or_create combines all fields and does an insert
     :param fields_dict: The fields_dict for the Django model
-    :param values: field name and value dict
+    :param field_name_to_value: field name and value dict
     :return:
     """
-
     # Convert foreign key dicts to their id, since Django expects the foreign key as an saved instance or id
     # Example region = {id: 5} becomes region_id = 5
     # This assumes id is the pk
-    modified_values = R.map_key_values(
-        lambda key, value: ['%s_id' % key, R.prop('id', value)] if
-            R.prop_or(False, 'django_type', fields_dict[key]) else
-            [key, value],
-        values
+    key_to_modified_key_and_value = R.map_with_obj(
+        lambda key, value: {'%s_id' % key: R.prop('id', value)} if
+        R.prop_or(False, 'django_type', fields_dict[key]) else
+        # No Change
+        {key: value},
+        field_name_to_value
     )
 
-    # TODO Convert foreign key objects to their id
-    return dict(
+    def key_value_based_on_unique_or_foreign(key):
+        """
+            Returns either a simple dict(key=value) for keys that must have unique values (e.g. id, key, OneToOne rel)
+            Returns dict(default=dict(key=value)) for keys that need not have unique values
+        :param {String} key:
+        :return {dict}:
+        """
+        modified_key_value = key_to_modified_key_and_value[key]
+        # non-defaults are for checking uniqueness and then using for update/insert
         # defaults are for updating/inserting
-        defaults=R.filter_dict(
-            lambda key_value: R.not_func(R.length(R.item_path_or([], [key_value[0], 'unique'], fields_dict))),
-            modified_values
-        ),
-        # rest are for checking uniqueness and if unique for inserting as well
         # this matches Django Query's update_or_create
-        **R.filter_dict(
-            lambda key_value: R.length(R.item_path_or([], [key_value[0], 'unique'], fields_dict)),
-            modified_values
-        )
-    )
+        return modified_key_value \
+            if R.length(R.item_path_or([], [key, 'unique'], fields_dict)) \
+            else dict(defaults=modified_key_value)
+
+    # Forms a dict(
+    #   unique_key1=value, unique_key2=value, ...,
+    #   defaults=(non_unique_key1=value, non_unique_key2=value, ...)
+    # )
+    return R.merge_deep_all(R.map_with_obj_to_values(
+        lambda key, value: key_value_based_on_unique_or_foreign(key),
+        field_name_to_value
+    ))
 
 
 @R.curry
