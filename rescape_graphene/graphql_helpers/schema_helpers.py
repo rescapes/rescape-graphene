@@ -2,9 +2,10 @@ import inspect
 import logging
 import sys
 from decimal import Decimal
-
+from graphql.language.printer import print_ast
 import graphene
 from django.contrib.gis.db.models import GeometryField
+from graphql import print_schema, parse
 from graphql_geojson import Geometry
 
 from ..functional import ramda as R
@@ -298,28 +299,32 @@ def allowed_query_arguments(fields_dict, graphene_type):
     :param graphen_type: Type used for emboded input class naming
     :return:
     """
-    return R.map_dict(
-        lambda value:
+
+    def resolve_type(value):
         # If the type is a scalar, just instantiate
-        R.prop('type', value)() if inspect.isclass(R.prop('type', value)) and issubclass(R.prop('type', value),
-                                                                                         Scalar) else
         # Otherwise created a related field InputType subclass. In order to query a nested object, it has to
         # be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
         # graphql: users: (name: "Peter", group: {role: "admin"})
         # https://github.com/graphql-python/graphene/issues/431
-        input_type_class(value, READ, graphene_type)(),
+        return R.prop('type', value)() if \
+            inspect.isclass(R.prop('type', value)) and issubclass(R.prop('type', value), Scalar) else \
+            input_type_class(value, READ, graphene_type)()
+
+    return R.compose(
+        R.map_dict(resolve_type),
         R.filter_dict(
             lambda key_value:
             # Only; accept Scalars. We don't need Relations because they are done automatically by graphene
-            # inspect.isclass(R.prop('type', value)) and issubclass(R.prop('type', value), Scalar) and
-            # Don't allow DENYd READs
+            # Correction, do include Relations. Graphene does not add these in for us. It's up to us to allow
+            # all relations as query variables.
+            # Don't allow DENYed READs
             R.and_func(
-                not R.prop_or(False, 'django_type', key_value[1]),
+                # not R.prop_or(False, 'django_type', key_value[1]),
+                True,
                 R.not_func(R.prop_eq_or_in(READ, DENY, key_value[1]))
-            ),
-            fields_dict
+            )
         )
-    )
+    )(fields_dict)
 
 
 def guess_update_or_create(fields_dict):
@@ -487,7 +492,8 @@ def graphql_query(query_name, fields):
             ) if variable_definitions else '',
             dump_graphql_keys(field_overrides or fields)
         )
-        logger.debug('Query: %s\nKwargs: %s' % (query, kwargs))
+
+        logger.debug('Query: %s\nKwargs: %s' % (print_ast(parse(query)), kwargs))
         return client.execute(query, **kwargs)
 
     return form_query
@@ -533,7 +539,7 @@ def graphql_update_or_create(mutation_config, fields, client, values):
         name,
         dump_graphql_keys(fields)
     )
-    logger.debug('Mutation: %s' % mutation)
+    logger.debug('Mutation: %s' % print_ast(parse(mutation)))
     return client.execute(mutation)
 
 
