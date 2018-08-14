@@ -83,7 +83,14 @@ class DataPointRelatedCreateInputType(InputObjectType):
     id = graphene.String(required=True)
 
 
-@memoize(map_args=lambda args: [args[0]['graphene_type'], args[1]])
+@memoize(map_args=lambda args: [
+    args[0]['graphene_type'],
+    args[1],
+    # TODO We use the parent_type_class to make each type unique. I don't know why graphene won't let us reuse
+    # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
+    # of a Region or the user of a Group.
+    args[2] if R.isinstance((list, tuple), args[2]) else [args[2]]
+])
 def input_type_class(field_dict_value, crud, parent_type_classes=[]):
     """
     An InputObjectType subclass for use as nested query argument types and mutation argument types
@@ -543,4 +550,13 @@ def graphql_update_or_create(mutation_config, fields, client, values):
     return client.execute(mutation)
 
 
+def correct_data_query(self, data_field_name, kwargs):
+    """
+        Small correction here to change the data filter to data__contains to handle any json
+        https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
+    :param data_field_name: The name of the data field, e.g. 'data'
+    :param kwargs: The query kargs
+    :return: {dict} The corrected kwargs
+    """
+    return R.map_keys(lambda key: '%s__contains' % data_field_name if R.equals(data_field_name, key) else key, kwargs)
 
