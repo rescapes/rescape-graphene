@@ -4,7 +4,7 @@ import sys
 from decimal import Decimal
 from graphql.language.printer import print_ast
 import graphene
-from django.contrib.gis.db.models import GeometryField
+from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField
 from graphql import print_schema, parse
 from graphql_geojson import Geometry
 
@@ -550,7 +550,43 @@ def graphql_update_or_create(mutation_config, fields, client, values):
     return client.execute(mutation)
 
 
-def correct_data_query(self, data_field_name, kwargs):
+def process_query_value(model, value_dict):
+    """
+        Process the query value for a related model dict
+    :param model:
+    :param {dict} value: Dict of key values querying the related model. This could have embedded types as well.
+    E.g. model User value {username: 'foo'} or model Group value {name: 'goo', user: {username: 'foo'}}
+    :return: A flat list of key values representing the value dict, including resolved deep values
+    """
+    return R.chain(R.identity, R.map_with_obj_to_values(lambda key, inner_value: process_query_kwarg(model, key, inner_value), value_dict))
+
+
+def process_query_kwarg(model, key, value):
+    """
+        Process a query kwarg. The key is always a string and the value can be a scalar or a dict representing the
+        model given by model. E.g. model: User, key: 'user', value: {id: 1, username: 'jo'} or
+        model User, key: 'user', value: {id: 1, group: {id: 2}}
+        TODO I haven't made this work with many to many yet, such as
+        model User, key: 'user', value: {id: 1, groups: [{id: 2}, {name: 'fellas'}]}. This requires using __in
+        for the django key and other fancy stuff
+    :param model:
+    :param key:
+    :param value:
+    :return:
+    """
+    if isinstance(model._meta._forward_fields_map[key], (JSONField)):
+        # JSONField's need to change the key to __contains
+        return [['%s__contains' % key, value]]
+    elif isinstance(model._meta._forward_fields_map[key], (OneToOneField, ManyToManyField)):
+        # Recurse on these, so foo: {bar: 1} resolves to foo__bar: 1
+        related_model = model._meta._forward_fields_map[key].related_model
+        key_values = process_query_value(related_model, value)
+        return R.map(lambda inner_key_value: ['%s__%s' % (key, inner_key_value[0]), inner_key_value[1]], key_values)
+
+    return [[key, value]]
+
+
+def stringify_query_kwargs(model, kwargs):
     """
         Small correction here to change the data filter to data__contains to handle any json
         https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
@@ -558,5 +594,7 @@ def correct_data_query(self, data_field_name, kwargs):
     :param kwargs: The query kargs
     :return: {dict} The corrected kwargs
     """
-    return R.map_keys(lambda key: '%s__contains' % data_field_name if R.equals(data_field_name, key) else key, kwargs)
+    # Since each process-query_kwargs returns an array of one or more pairs (due to potential recursion), we have
+    # to take the values of R.map_with_obj and then flatten those values together and finally convert them from pairs to a dict
+    return R.from_pairs(R.flatten(R.values(R.map_with_obj(lambda key, value: process_query_kwarg(model, key, value), kwargs))))
 
