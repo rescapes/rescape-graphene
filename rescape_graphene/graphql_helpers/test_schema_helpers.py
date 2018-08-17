@@ -1,7 +1,5 @@
 import inspect
 
-import graphene
-from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from graphene.test import Client
 from ..user.user_schema import UserType
@@ -13,6 +11,7 @@ from .schema_helpers import allowed_query_arguments, input_type_fields, CREATE, 
     input_type_parameters_for_update_or_create, merge_with_django_properties, REQUIRE, DENY
 from snapshottest import TestCase
 from ..functional import ramda as R
+
 
 class SchemaHelpersTypeCase(TestCase):
     client = None

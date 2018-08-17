@@ -1,6 +1,6 @@
 from json import dumps
 from django.contrib.gis.geos import GeometryCollection, GEOSGeometry, Polygon
-
+from rescape_graphene import ramda as R
 
 def geometry_from_geojson(geojson):
     """
@@ -25,5 +25,4 @@ def ewkt_from_feature(feature):
 
 # https://gis.stackexchange.com/questions/177254/create-a-geosgeometry-from-a-featurecollection-in-geodango
 def geometrycollection_from_featurecollection(feature_collection):
-    from rescape_graphene import ramda as R
-    return GeometryCollection(tuple(R.map(geometry_from_feature, feature_collection)))
+    return GeometryCollection(tuple(R.map(geometry_from_feature, feature_collection['features'])))

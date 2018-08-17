@@ -1,8 +1,7 @@
-import ast
-from unittest import TestCase
-
-from app.helpers.geometry_helpers import geometrycollection_from_featurecollection
-from django.contrib.gis.geos import GeometryCollection, GEOSGeometry
+from django.contrib.gis.geos import GeometryCollection
+from snapshottest import TestCase
+from .geometry_helpers import geometrycollection_from_featurecollection
+from rescape_graphene import ramda as R
 
 fc = { "type": "FeatureCollection",
 "features": [
@@ -42,4 +41,4 @@ class GeometryHelpersTestCase(TestCase):
     client = None
 
     def test_geometrycollection_from_feature(self):
-        assert self.assertMatchSnapshot(geometrycollection_from_featurecollection(fc))
+        assert R.isinstance(GeometryCollection, geometrycollection_from_featurecollection(fc))

@@ -37,13 +37,28 @@ from .user.user_schema import (
     graphql_refresh_token
 )
 
-from .graphql_helpers.json_field_helpers import resolver
+from .graphql_helpers.json_field_helpers import (
+    resolver,
+    pick_selections,
+    resolve_selections,
+    model_resolver_for_dict_field,
+    resolver_for_dict_list,
+    resolver_for_dict_field
+)
+
+from .graphql_helpers.geometry_helpers import (
+    ewkt_from_feature,
+    geometry_from_feature,
+    geometry_from_geojson,
+    geometrycollection_from_featurecollection
+)
 
 __all__ = [
-    'helpers.scehema_helpers',
-    'helpers.user_schema',
     'functional.ramda',
-    'graphql_helpers.json_field_helpers'
-    'django_helpers.write_helpers'
+    'graphql_helpers.schema_helpers',
+    'graphql_helpers.user_schema',
+    'graphql_helpers.json_field_helpers',
+    'graphql_helpers.geojson_helpers',
+    'django_helpers.write_helpers',
     'user.user_schema'
 ]
