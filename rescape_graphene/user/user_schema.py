@@ -10,9 +10,6 @@ from ..graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, C
     merge_with_django_properties, input_type_parameters_for_update_or_create, UPDATE, \
     guess_update_or_create, graphql_update_or_create, graphql_query
 
-import django
-django.setup()
-
 class UserType(DjangoObjectType):
     class Meta:
         model = get_user_model()
