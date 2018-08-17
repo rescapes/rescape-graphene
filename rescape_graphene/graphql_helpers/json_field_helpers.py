@@ -87,7 +87,7 @@ def resolver(json_field_name, resource, context):
     selections = R.map(lambda sel: underscore(sel.name.value), context.field_asts[0].selection_set.selections)
     # Identify the keys that are actually in resource[json_field_name]
     all_selections = R.filter(
-        lambda key: key in resource[json_field_name], selections
+        lambda key: key in R.prop(json_field_name, resource), selections
     )
     # Pick out the values that we want
     dct = R.pick(all_selections, resource.data)
