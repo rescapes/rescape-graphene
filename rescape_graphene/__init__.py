@@ -53,12 +53,18 @@ from .graphql_helpers.geometry_helpers import (
     geometrycollection_from_featurecollection
 )
 
+from .graphql_helpers.views import (
+    JWTGraphQLView,
+    SafeGraphQLView
+)
+
 __all__ = [
     'functional.ramda',
     'graphql_helpers.schema_helpers',
     'graphql_helpers.user_schema',
     'graphql_helpers.json_field_helpers',
     'graphql_helpers.geojson_helpers',
+    'graphql_helpers.views',
     'django_helpers.write_helpers',
     'user.user_schema'
 ]
