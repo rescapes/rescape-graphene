@@ -4,7 +4,7 @@ import sys
 from decimal import Decimal
 from graphql.language.printer import print_ast
 import graphene
-from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField
+from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField, ForeignKey
 from graphql import print_schema, parse
 from graphql_geojson import Geometry
 
@@ -171,13 +171,15 @@ def related_input_field_for_crud_type(field_dict_value, parent_type_classes, cru
 
 def django_to_graphene_type(field, field_dict_value, parent_type_classes):
     """
-        Resolve the actual AutoField type. I can't find a good way to do this
+        Resolve the actual Graphene Field type. I can't find a good way to do this automatically.
     :param field: The Django Field
     :param field_dict_value: The corresponding field_dict value if it exists. This required for related fields.
-    For related fields it must containt field_dict_value.graphene_type, which is the graphene type for that field
+    For related fields it must contain field_dict_value.graphene_type, which is the graphene type for that field
     as well as a fields property which is the fields_dict for that field
-    :param parent_type_classes: String array of parent graphene types for dynamic class naming
-    :return:
+    :param parent_type_classes: String array of parent graphene types for dynamic class naming. This is needed
+    because Graphene doesn't allow duplicate class names (even if they represent the same class type relationship
+    in different parts of the schema)
+    :return: The resolved or generated Graphene type
     """
     if R.prop_or(False, 'graphene_type', field_dict_value or {}):
         # This is detected as a lambda and called first with crud to establish what fields are needed in the
@@ -233,10 +235,10 @@ def process_field(field_to_unique_field_groups, field, field_dict_value, parent_
         R.prop_or(None, field.attname, field_to_unique_field_groups)
     ])
     # Normally the field_dict_value will delegate the type to the underlying Django model
-    # In cases where we need an explicit type, becsuse the field represents something modeled differently than django,
-    # we specify the type property on field_dict_value, which takes precedence
+    # In cases where we need an explicit type, because the field represents something modeled outside django,
+    # like json blobs, we specify the type property on field_dict_value.graphene_type, which takes precedence
     return dict(
-        # Resolves to a lambda that expects a crud value and then returns a lamda that expects args
+        # Resolves to a lambda that expects a crud value and then returns a lambda that expects args
         type=django_to_graphene_type(field, field_dict_value, parent_type_classes),
         # This tells that the relation is based on a Django class
         django_type=R.item_path_or(None, ['graphene_type', '_meta', 'model'], field_dict_value),
@@ -566,22 +568,26 @@ def process_query_kwarg(model, key, value):
         Process a query kwarg. The key is always a string and the value can be a scalar or a dict representing the
         model given by model. E.g. model: User, key: 'user', value: {id: 1, username: 'jo'} or
         model User, key: 'user', value: {id: 1, group: {id: 2}}
-        TODO I haven't made this work with many to many yet, such as
+        TODO I haven't made this work with ManyToMany yet, such as
         model User, key: 'user', value: {id: 1, groups: [{id: 2}, {name: 'fellas'}]}. This requires using __in
         for the django key and other fancy stuff
     :param model:
     :param key:
     :param value:
-    :return:
+    :return: Flat list of pairs, where first value of pairs is a django query string like 'foo__car' or 'foo__contains'
+     and second is value like 2
     """
     if isinstance(model._meta._forward_fields_map[key], (JSONField)):
         # JSONField's need to change the key to __contains
         return [['%s__contains' % key, value]]
-    elif isinstance(model._meta._forward_fields_map[key], (OneToOneField, ManyToManyField)):
-        # Recurse on these, so foo: {bar: 1} resolves to foo__bar: 1
+    elif isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField)):
+        # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
         related_model = model._meta._forward_fields_map[key].related_model
         key_values = process_query_value(related_model, value)
         return R.map(lambda inner_key_value: ['%s__%s' % (key, inner_key_value[0]), inner_key_value[1]], key_values)
+    elif isinstance(model._meta._forward_fields_map[key], (ManyToManyField)):
+        raise NotImplementedError("TODO need to implement stringify for ManyToMany")
+
 
     return [[key, value]]
 
@@ -590,6 +596,9 @@ def stringify_query_kwargs(model, kwargs):
     """
         Small correction here to change the data filter to data__contains to handle any json
         https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
+        This also handles resovling relationships like {user: {id: 1, group: {id: 2}}} in the kwargs by converting them
+        to user__id==1 and user__group__id==2
+        TODO it doesn't handle many-to-many yet. I need to write that
     :param data_field_name: The name of the data field, e.g. 'data'
     :param kwargs: The query kargs
     :return: {dict} The corrected kwargs

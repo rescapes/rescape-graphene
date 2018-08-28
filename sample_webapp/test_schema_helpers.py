@@ -2,15 +2,15 @@ import inspect
 
 from django.contrib.auth.hashers import make_password
 from graphene.test import Client
-from ..user.user_schema import UserType
+from rescape_graphene.user.user_schema import UserType
 
-from .sample_schema import user_fields, FooType
+from sample_webapp.sample_schema import user_fields, FooType
 
-from .sample_schema import schema, foo_fields
-from .schema_helpers import allowed_query_arguments, input_type_fields, CREATE, UPDATE, \
-    input_type_parameters_for_update_or_create, merge_with_django_properties, REQUIRE, DENY
+from sample_webapp.sample_schema import schema, foo_fields
+from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_arguments, input_type_fields, CREATE, UPDATE, \
+    input_type_parameters_for_update_or_create
 from snapshottest import TestCase
-from ..functional import ramda as R
+from rescape_graphene.functional import ramda as R
 
 
 class SchemaHelpersTypeCase(TestCase):
@@ -33,7 +33,7 @@ class SchemaHelpersTypeCase(TestCase):
         def map_type(t):
             return t.__name__ if inspect.isclass(t) else t
 
-        self.assertMatchSnapshot(R.map_deep(dict(type=map_type, graphene_type=map_type, django_type=map_type), R.omit_deep(['default'], foo_results)))
+        self.assertMatchSnapshot(R.map_deep(dict(type=map_type, graphene_type=map_type, django_type=map_type), R.omit_deep(['default', 'type_modifier'], foo_results)))
 
     # context_value={'user': 'Peter'}
     # root_value={'user': 'Peter'}
@@ -65,3 +65,13 @@ class SchemaHelpersTypeCase(TestCase):
 
     # def test_delete(self):
     #    self.assertMatchSnapshot(delete_fields(user_fields))
+
+
+
+def assert_no_errors(result):
+    """
+        Assert no graphql request errors
+    :param result: The request Result
+    :return: None
+    """
+    assert not (R.has('errors', result) and R.prop('errors', result)), R.dump_json(R.prop('errors', result))

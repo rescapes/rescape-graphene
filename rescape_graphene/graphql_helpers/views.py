@@ -81,7 +81,7 @@ class JWTGraphQLView(JSONWebTokenAuthentication, SafeGraphQLView):
         try:
             # if not already authenticated by django cookie sessions
             # check the JWT token by re-using our DRF JWT
-            if not request.user.is_authenticated():
+            if not request.user.is_authenticated:
                 request.user, request.token = self.authenticate(request)
         except exceptions.AuthenticationFailed as e:
             response = HttpResponse(

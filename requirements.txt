@@ -15,4 +15,6 @@ wheel==0.31.1
 twine==1.11.0
 utils==0.9.0
 simplejson==3.16.0
+jsonfield===2.0.2
+
 

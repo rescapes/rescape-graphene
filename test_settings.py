@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'webapp',
+    'sample_webapp',
     'graphene_django'
 ]
 
@@ -171,7 +171,7 @@ LOGGING = {
         'rescape_graphene': {
             'handlers': ['django_info', 'console'],
             'propagate': True,
-            'level': 'INFO',
+            'level': 'DEBUG',
         }
     },
 }

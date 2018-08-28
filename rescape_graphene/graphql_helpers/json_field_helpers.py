@@ -61,12 +61,14 @@ def model_resolver_for_dict_field(model_class, resource, context):
     """
         Resolver for the data field. This extracts the desired json fields from the context
         and creates a tuple of the field values. Graphene has no built in way for querying json types
+        TODO this naively assumes that the 'id' property is among the query selections and uses that
+        to resolve the instance
     :param model_class:
     :param resource:
     :param context:
     :return:
     """
-    selections = resolve_selections(context)
+    # selections = resolve_selections(context)
     field_name = underscore(context.field_name)
     # Assume for simplicity that id is among selections
     return model_class.objects.get(id=R.prop('id', getattr(resource, field_name)))
