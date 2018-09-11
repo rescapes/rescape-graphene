@@ -1,7 +1,7 @@
 import graphene
 from ..django_helpers.write_helpers import increment_prop_until_unique
 
-from ..functional import ramda as R
+from rescape_python_helpers import ramda as R
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from graphene import InputObjectType

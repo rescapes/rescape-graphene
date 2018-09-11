@@ -1,5 +1,5 @@
 from django.db.models import Q
-from ..functional import ramda as R
+from rescape_python_helpers import ramda as R
 
 
 def default_strategy(matches, prop_value, i):

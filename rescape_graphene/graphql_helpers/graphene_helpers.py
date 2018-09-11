@@ -2,7 +2,7 @@ from graphql_geojson import Geometry
 from inflection import camelize
 from graphene import ObjectType, Scalar
 import inspect
-from ..functional import ramda as R
+from rescape_python_helpers import ramda as R
 import numbers
 
 

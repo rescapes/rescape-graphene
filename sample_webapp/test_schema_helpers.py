@@ -10,7 +10,7 @@ from sample_webapp.sample_schema import schema, foo_fields
 from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_arguments, input_type_fields, CREATE, UPDATE, \
     input_type_parameters_for_update_or_create
 from snapshottest import TestCase
-from rescape_graphene.functional import ramda as R
+from rescape_python_helpers import ramda as R
 
 
 class SchemaHelpersTypeCase(TestCase):

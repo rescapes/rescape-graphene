@@ -21,7 +21,7 @@ Replace the path with your code directory
 
 ```bash
 export RESCAPE_GRAPHENE_BASE_DIR=/Users/andy/code/rescape-graphene
-export RESCAPE_GRAPHENE_PROJECT_DIR=$URBINSIGHT_BASE_DIR/urbinsight
+export RESCAPE_GRAPHENE_PROJECT_DIR=$RESCAPE_GRAPHENE_BASE_DIR/urbinsight
 export PYTHONPATH=.:$RESCAPE_GRAPHENE_BASE_DIR:$RESCAPE_GRAPHENE_PROJECT_DIR
 ```
 
@@ -42,6 +42,9 @@ Upload package:
 
 ```bash
 twine upload dist/*
+```
+
+``` bash
 git commit . -m "Version update" && git push && bumpversion --current-version {look in setup.py} patch setup.py && python3 setup.py clean sdist bdist_wheel && twine upload dist/*
 ```
 

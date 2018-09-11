@@ -1,5 +1,5 @@
 import graphene
-from rescape_graphene.functional import ramda as R
+from rescape_python_helpers import ramda as R
 import graphql_jwt
 from django.contrib.auth import get_user_model, get_user
 from graphene import ObjectType, Schema, Float, InputObjectType, Mutation, Field

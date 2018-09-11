@@ -20,8 +20,8 @@ class CleanCommand(setuptools.Command):
 
 
 setuptools.setup(
-    name="rescape_graphene",
-    version="0.2.28",
+    name="rescape-graphene",
+    version="0.2.29",
     author="Andy Likuski",
     author_email="andy@likuski.org",
     description="Graphene helpers for rescape projects",

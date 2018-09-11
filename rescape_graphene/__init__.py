@@ -21,8 +21,6 @@ from .django_helpers.write_helpers import (
     enforce_unique_props
 )
 
-from .functional import ramda
-
 from .user.user_schema import (
     UserType,
     UpsertUser,
@@ -44,13 +42,6 @@ from .graphql_helpers.json_field_helpers import (
     model_resolver_for_dict_field,
     resolver_for_dict_list,
     resolver_for_dict_field
-)
-
-from .graphql_helpers.geometry_helpers import (
-    ewkt_from_feature,
-    geometry_from_feature,
-    geometry_from_geojson,
-    geometrycollection_from_featurecollection
 )
 
 from .graphql_helpers.views import (

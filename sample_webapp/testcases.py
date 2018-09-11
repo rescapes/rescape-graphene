@@ -2,7 +2,7 @@ from django.test import Client, RequestFactory, testcases
 from unittest import mock
 import graphene
 
-from rescape_graphene.functional import ramda as R
+from rescape_python_helpers import ramda as R
 
 # https://github.com/flavors/django-graphql-jwt/blob/master/tests/testcases.py
 class GraphQLRequestFactory(RequestFactory):

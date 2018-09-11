@@ -2,7 +2,6 @@
 import traceback
 
 from django.conf import settings
-from graphene_django.views import GraphQLView
 from graphql.error import GraphQLSyntaxError
 from graphql.error.located_error import GraphQLLocatedError
 from graphql.error import format_error as format_graphql_error

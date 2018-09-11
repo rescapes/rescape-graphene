@@ -2,7 +2,7 @@ import logging
 
 from sample_webapp.test_schema_helpers import assert_no_errors
 from sample_webapp.testcases import GraphQLJWTTestCase, GraphQLClient
-from ..functional import ramda as R
+from rescape_python_helpers import ramda as R
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from graphene.test import Client

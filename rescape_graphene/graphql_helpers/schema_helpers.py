@@ -8,7 +8,7 @@ from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToMan
 from graphql import print_schema, parse
 from graphql_geojson import Geometry
 
-from ..functional import ramda as R
+from rescape_python_helpers import ramda as R
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \

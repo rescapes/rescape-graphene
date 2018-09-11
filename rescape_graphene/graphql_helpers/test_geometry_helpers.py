@@ -1,7 +1,6 @@
 from django.contrib.gis.geos import GeometryCollection
 from snapshottest import TestCase
-from .geometry_helpers import geometrycollection_from_featurecollection
-from rescape_graphene import ramda as R
+from rescape_python_helpers import geometrycollection_from_featurecollection, ramda as R
 
 fc = { "type": "FeatureCollection",
 "features": [
