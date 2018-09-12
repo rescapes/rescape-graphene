@@ -21,7 +21,7 @@ class CleanCommand(setuptools.Command):
 
 setuptools.setup(
     name="rescape-graphene",
-    version="0.2.29",
+    version="0.2.30",
     author="Andy Likuski",
     author_email="andy@likuski.org",
     description="Graphene helpers for rescape projects",
@@ -42,6 +42,15 @@ setuptools.setup(
         'graphene',
         'graphene-django',
         'inflection',
-        'deepmerge'
-    ],
+        'deepmerge',
+        'django-graphql-geojson',
+        'djangorestframework',
+        'djangorestframework-jwt',
+        'psycopg2-binary',
+        'django-graphql-jwt',
+        'utils',
+        'simplejson',
+        'jsonfield',
+        'rescape-python-helpers'
+    ]
 )
