@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from graphene.test import Client
 from sample_webapp.sample_schema import schema, graphql_query_foos, Foo
 from snapshottest import TestCase
-from rescape_graphene.user.user_schema import graphql_update_or_create_user, graphql_query_users, \
+from rescape_graphene.schema_models.user_schema import graphql_update_or_create_user, graphql_query_users, \
     graphql_authenticate_user, graphql_verify_user, graphql_refresh_token
 
 logging.basicConfig(level=logging.DEBUG)

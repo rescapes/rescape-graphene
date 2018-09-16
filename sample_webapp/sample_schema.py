@@ -8,7 +8,7 @@ from graphene_django.debug import DjangoDebug
 from graphql_jwt.decorators import login_required
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field
 
-from rescape_graphene.user.user_schema import UserType, user_fields, CreateUser, UpdateUser
+from rescape_graphene.schema_models.user_schema import UserType, user_fields, CreateUser, UpdateUser
 from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_arguments, REQUIRE, \
     merge_with_django_properties, guess_update_or_create, \
     CREATE, UPDATE, input_type_parameters_for_update_or_create, graphql_update_or_create, graphql_query, \

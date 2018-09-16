@@ -21,7 +21,7 @@ from .django_helpers.write_helpers import (
     enforce_unique_props
 )
 
-from .user.user_schema import (
+from .schema_models.user_schema import (
     UserType,
     UpsertUser,
     CreateUser,
@@ -33,6 +33,18 @@ from .user.user_schema import (
     graphql_authenticate_user,
     graphql_verify_user,
     graphql_refresh_token
+)
+
+from .schema_models.group_schema import (
+    GroupType,
+    UpsertGroup,
+    CreateGroup,
+    UpdateGroup,
+    graphql_update_or_create_group,
+    graphql_query_groups,
+    group_fields,
+    group_mutation_config,
+    graphql_update_or_create,
 )
 
 from .graphql_helpers.json_field_helpers import (

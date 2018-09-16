@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from ..user.user_schema import user_fields
+from ..schema_models.user_schema import user_fields
 
 from .write_helpers import increment_prop_until_unique, enforce_unique_props
 from django.contrib.auth import get_user_model
