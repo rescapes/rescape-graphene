@@ -69,5 +69,6 @@ __all__ = [
     'graphql_helpers.geojson_helpers',
     'graphql_helpers.views',
     'django_helpers.write_helpers',
-    'user.user_schema'
+    'schema_models.user_schema'
+    'schama_models.group_schema'
 ]
