@@ -50,7 +50,7 @@ def dump_graphene_type(key, value):
 
     typ = R.prop('type', value)
     return handleGrapheneTypes(key, value) if \
-        R.isfunction(typ) or (inspect.isclass(typ) and issubclass(typ, (Geometry, ObjectType))) else \
+        R.isfunction(typ) or (inspect.isclass(typ) and issubclass(typ, (ObjectType))) else \
         camelize(key, False)
 
 
