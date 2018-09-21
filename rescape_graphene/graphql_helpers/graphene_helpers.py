@@ -1,4 +1,3 @@
-from graphql_geojson import Geometry
 from inflection import camelize
 from graphene import ObjectType, Scalar
 import inspect

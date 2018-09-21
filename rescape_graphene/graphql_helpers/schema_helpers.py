@@ -2,11 +2,11 @@ import inspect
 import logging
 import sys
 from decimal import Decimal
+
 from graphql.language.printer import print_ast
 import graphene
 from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField, ForeignKey
-from graphql import print_schema, parse
-from graphql_geojson import Geometry
+from graphql import parse
 
 from rescape_python_helpers import ramda as R
 from django.contrib.postgres.fields import JSONField
@@ -17,9 +17,9 @@ from graphene import Scalar, InputObjectType, ObjectType
 from graphql.language import ast
 from inflection import camelize
 # Indicates a CRUD operation is not allowed to use this field
+from rescape_graphene.graphql_helpers.geojson_data_schema import Geometry
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
-import graphql_geojson
 logger = logging.getLogger('rescape_graphene')
 
 DENY = 'deny'
@@ -205,7 +205,7 @@ def django_to_graphene_type(field, field_dict_value, parent_type_classes):
         UUIDField: graphene.UUID,
         TextField: graphene.String,
         JSONField: graphene.JSONString,
-        GeometryField: graphql_geojson.Geometry
+        GeometryField: Geometry
     }
     cls = field.__class__
     match = R.prop_or(None, cls, types)

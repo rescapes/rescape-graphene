@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
-from django.db import models
-from django.db.models import Model, CharField, DateTimeField, ForeignKey
+from django.contrib.gis.db import models
+from django.contrib.gis.db.models import GeometryCollectionField, Model
+from django.db.models import CharField, DateTimeField, ForeignKey
 from jsonfield import JSONField
 
 
@@ -19,6 +20,8 @@ class Foo(Model):
 
     # Example of a foreign key
     user = ForeignKey(get_user_model(), on_delete=models.DO_NOTHING)
+    # Example of geojson container
+    geo_collection = GeometryCollectionField()
 
     class Meta:
         app_label = "sample_webapp"

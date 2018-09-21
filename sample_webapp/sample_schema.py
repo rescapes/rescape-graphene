@@ -6,6 +6,8 @@ from graphene import ObjectType, Schema, Float, InputObjectType, Mutation, Field
 from graphene_django import DjangoObjectType
 from graphene_django.debug import DjangoDebug
 from graphql_jwt.decorators import login_required
+
+from rescape_graphene.graphql_helpers.geojson_data_schema import GeometryCollectionDataType, geometry_collection_fields
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field
 
 from rescape_graphene.schema_models.user_schema import UserType, user_fields, CreateUser, UpdateUser
@@ -30,9 +32,11 @@ user_fields = merge_with_django_properties(UserType, dict(
     date_joined=dict(type=graphene.Boolean, create=DENY, update=DENY)
 ))
 
+
 class FooType(DjangoObjectType):
     class Meta:
         model = Foo
+
 
 foo_data_fields = dict(
     example=dict(type=Float),
@@ -42,11 +46,10 @@ foo_data_fields = dict(
     # details of the user--it can query separately for that. We could offer all fields in a query only
     # version of these fields
     friend=dict(
-        type=UserType,
         graphene_type=UserType,
         fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE))),
         type_modifier=lambda typ: Field(typ, resolver=model_resolver_for_dict_field(get_user_model()))
-    ),
+    )
 )
 
 FooDataType = type(
@@ -78,7 +81,12 @@ foo_fields = merge_with_django_properties(FooType, dict(
     # support our Mutation subclasses below
     # For simplicity we limit fields to id. Mutations can only us id, and a query doesn't need other
     # details of the user--it can query separately for that
-    user=dict(graphene_type=UserType, fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE))))
+    user=dict(graphene_type=UserType, fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE)))),
+    geo_collection=dict(
+        create=REQUIRE,
+        graphene_type=GeometryCollectionDataType,
+        fields=geometry_collection_fields
+    )
 ))
 
 foo_mutation_config = dict(
@@ -97,7 +105,6 @@ class UpsertFoo(Mutation):
     """
     foo = Field(FooType)
 
-
     def mutate(self, info, foo_data=None):
         update_or_create_values = input_type_parameters_for_update_or_create(foo_fields, foo_data)
         foo, created = Foo.objects.update_or_create(**update_or_create_values)
@@ -111,7 +118,7 @@ class CreateFoo(UpsertFoo):
 
     class Arguments:
         foo_data = type('CreateFooInputType', (InputObjectType,),
-                           input_type_fields(foo_fields, CREATE, FooType))(required=True)
+                        input_type_fields(foo_fields, CREATE, FooType))(required=True)
 
 
 class UpdateFoo(UpsertFoo):
@@ -121,7 +128,7 @@ class UpdateFoo(UpsertFoo):
 
     class Arguments:
         foo_data = type('UpdateFooInputType', (InputObjectType,),
-                           input_type_fields(foo_fields, UPDATE, FooType))(required=True)
+                        input_type_fields(foo_fields, UPDATE, FooType))(required=True)
 
 
 graphql_update_or_create_foo = graphql_update_or_create(foo_mutation_config, foo_fields)
@@ -149,7 +156,7 @@ class Query(ObjectType):
 
     @login_required
     def resolve_user(self, info, **kwargs):
-       return info.context.user
+        return info.context.user
 
     def resolve_users(self, info, **kwargs):
         return get_user_model().objects.filter(**kwargs)
@@ -170,6 +177,7 @@ class Query(ObjectType):
     def resolve_foo(self, info, **kwargs):
         return Foo.objects.get(**kwargs)
 
+
 class Mutation(graphene.ObjectType):
     create_user = CreateUser.Field()
     update_user = UpdateUser.Field()
@@ -178,5 +186,6 @@ class Mutation(graphene.ObjectType):
     token_auth = graphql_jwt.ObtainJSONWebToken.Field()
     verify_token = graphql_jwt.Verify.Field()
     refresh_token = graphql_jwt.Refresh.Field()
+
 
 schema = Schema(query=Query, mutation=Mutation)
