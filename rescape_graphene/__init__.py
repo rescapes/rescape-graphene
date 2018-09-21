@@ -55,6 +55,15 @@ from .graphql_helpers.json_field_helpers import (
     resolver_for_dict_list,
     resolver_for_dict_field
 )
+from .graphql_helpers.geojson_data_schema import (
+    GeometryCollectionDataType,
+    Geometry,
+    FeatureDataType,
+    FeatureGeometryDataType,
+    feature_data_type_fields,
+    feature_geometry_data_type_fields,
+    geometry_collection_fields
+)
 
 from .graphql_helpers.views import (
     JWTGraphQLView,
@@ -69,6 +78,7 @@ __all__ = [
     'graphql_helpers.geojson_helpers',
     'graphql_helpers.views',
     'django_helpers.write_helpers',
+    'django_helpers.geojson_data_schema',
     'schema_models.user_schema'
     'schama_models.group_schema'
 ]
