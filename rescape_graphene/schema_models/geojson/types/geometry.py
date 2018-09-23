@@ -17,7 +17,7 @@ __all__ = [
 ]
 
 
-class GrapheneCoordinates(graphene.Scalar):
+class GrapheneGeometry(graphene.Scalar):
     """
         Graphene representation for a GeoDjango Coordinates
     """
@@ -29,7 +29,7 @@ class GrapheneCoordinates(graphene.Scalar):
 
     @classmethod
     def serialize(cls, value):
-        return pickle.dumps(value)
+        return json.loads(value.geojson)
 
     @classmethod
     def parse_literal(cls, node):
@@ -44,7 +44,7 @@ class GrapheneCoordinates(graphene.Scalar):
         return GEOSGeometry(value)
 
 
-class GrapheneGeometry(graphene.Scalar):
+class GeometryCoordinates(graphene.Scalar):
     """
         Graphene representation for a GeoDjango GeometryField, which can contain the feature of a geojson blob
     """
@@ -59,7 +59,7 @@ class GrapheneGeometry(graphene.Scalar):
 
     @classmethod
     def serialize(cls, value):
-        return ast.tojson.loads(value.geojson)
+        return pickle.dumps(value)
 
     @classmethod
     def parse_literal(cls, node):
@@ -70,18 +70,26 @@ class GrapheneGeometry(graphene.Scalar):
         """
 
         def map_value(value):
+            """
+                value is either a ListValue with values that are ListValues or a ListValue with values that
+                are FloatValues
+            :param value:
+            :return:
+            """
             return R.if_else(
                     lambda v: R.isinstance(ListValue, R.head(v.values)),
-                    lambda v: reduce(v.values),
+                    # ListValues
+                    lambda v: [reduce(v.values)],
+                    # FloatValues
                     lambda v: [R.map(lambda fv: float(fv.value), v.values)]
             )(value)
 
         def reduce(values):
-            return [R.reduce(
+            return R.reduce(
                 lambda accum, list_values: R.concat(accum, map_value(list_values)),
                 [],
                 values
-            )]
+            )
 
         # Create the coordinatew by reducing node.values=[node.values=[node.floats], node.value, ...]
         return R.reduce(

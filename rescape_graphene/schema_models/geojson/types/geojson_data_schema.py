@@ -1,14 +1,14 @@
 from graphene import String, ObjectType, Field
 
-from rescape_graphene.schema_models.geojson.types import GrapheneGeometry
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_field
 from rescape_python_helpers import ramda as R
 
+from rescape_graphene.schema_models.geojson.types.geometry import GeometryCoordinates
 
 feature_geometry_data_type_fields = dict(
     # Polygon, Linestring, Point, etc
     type=dict(type=String),
-    coordinates=dict(type=GrapheneGeometry)
+    coordinates=dict(type=GeometryCoordinates)
 )
 
 # This matches the fields of GeoDjango's GeometryCollectionField features[...].geometry property

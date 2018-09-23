@@ -100,7 +100,7 @@ class GenaralTypeCase(TestCase):
             user=dict(id=self.lion.id),
             data=dict(
                 example=1.5,
-                friend=dict(id=self.cat.id)
+                friend=dict(id=self.lion.id)  # self love
             ),
             geo_collection={
                 'type': 'FeatureCollection',

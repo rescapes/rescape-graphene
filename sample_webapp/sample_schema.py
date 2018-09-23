@@ -5,6 +5,8 @@ import graphql_jwt
 from django.contrib.auth import get_user_model, get_user
 from graphene import ObjectType, Schema, Float, InputObjectType, Mutation, Field
 from graphene_django.debug import DjangoDebug
+from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature_collection
+
 from rescape_graphene import increment_prop_until_unique, enforce_unique_props
 from graphql_jwt.decorators import login_required
 
@@ -113,7 +115,11 @@ class UpsertFoo(Mutation):
     foo = Field(FooType)
 
     def mutate(self, info, foo_data=None):
-        update_or_create_values = input_type_parameters_for_update_or_create(foo_fields, foo_data)
+        modified_foo_data = R.merge(
+            foo_data,
+            dict(geo_collection=ewkt_from_feature_collection(foo_data['geo_collection'])) if R.prop('geo_collection', foo_data) else {}
+        )
+        update_or_create_values = input_type_parameters_for_update_or_create(foo_fields, modified_foo_data)
         foo, created = Foo.objects.update_or_create(**update_or_create_values)
         return UpsertFoo(foo=foo)
 
