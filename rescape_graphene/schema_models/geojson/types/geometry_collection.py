@@ -9,7 +9,6 @@ from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dic
 from rescape_graphene.schema_models.geojson.types.geojson_data_schema import FeatureDataType, feature_data_type_fields
 from rescape_graphene.schema_models.geojson.resolvers import geometry_collection_resolver
 from rescape_graphene.schema_models.geojson.types import GeometryType
-from rescape_graphene.schema_models.geojson.types.geojson_type import GeoJsonType
 
 __all__ = [
     'GrapheneGeometryCollection',
@@ -64,7 +63,7 @@ geometry_collection_fields = dict(
 # This matches the fields of GeoDjango's GeometryCollectionField
 GeometryCollectionType = type(
     'GeometryCollectionType',
-    (GeoJsonType,),
+    (graphene.ObjectType,),
     R.map_with_obj(
         # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
         lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),

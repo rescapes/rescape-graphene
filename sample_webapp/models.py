@@ -21,7 +21,7 @@ class Foo(Model):
     # Example of a foreign key
     user = ForeignKey(get_user_model(), on_delete=models.DO_NOTHING)
     # Example of geojson container
-    geo_collection = GeometryCollectionField()
+    geo_collection = GeometryCollectionField(null=False)
 
     class Meta:
         app_label = "sample_webapp"

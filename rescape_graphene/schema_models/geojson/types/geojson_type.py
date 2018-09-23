@@ -5,6 +5,7 @@ import graphene
 from graphene.types import resolver
 from graphene.types.generic import GenericScalar
 from graphene_django.types import DjangoObjectType, DjangoObjectTypeOptions
+from rescape_python_helpers import ramda as R
 
 __all__ = ['GeoJsonType']
 
@@ -31,26 +32,22 @@ class GeoJSONTypeOptions(DjangoObjectTypeOptions):
     geojson_field = None
 
     def __setattr__(self, name, value):
-        if name == 'fields':
-            geometry_field = value.pop(self.geojson_field, None)
-
-            assert geometry_field is not None, (
-                'Unrecognized field `{}`'.format(self.geojson_field)
+        if name == 'xfields':
+            geo_fields = R.filter_dict(
+                R.compose(
+                    lambda type: R.contains(type, ['GeometryType', 'GeometryCollectionType']),
+                    lambda key_field: R.item_path_or(False, ['_type', '_of_type'], key_field[1]),
+                ),
+                value
             )
 
-            geometry_field.name = 'geometry'
-            bbox_field = graphene.Field(
-                GenericScalar,
-                default_value=self.geojson_field)
-
             primary_key = self.model._meta.pk.name
-            primary_key_field = value.pop(primary_key, None)
+            primary_key_field = value[primary_key]
             properties = self.get_properties(value)
 
             fields = [
                 ('type', graphene.Field(graphene.String)),
                 (self.geojson_field, geometry_field),
-                ('bbox', bbox_field),
                 ('properties', graphene.Field(properties)),
             ]
 
@@ -75,15 +72,13 @@ class GeoJSONTypeOptions(DjangoObjectTypeOptions):
 
 
 class GeoJsonType(DjangoObjectType):
-
     class Meta:
         abstract = True
 
     @classmethod
     def __init_subclass_with_meta__(cls, name=None, _meta=None,
                                     geojson_field=None, **options):
-
         if _meta is None:
             _meta = GeoJSONTypeOptions(cls)
 
-        super().__init_subclass_with_meta__(name=name, _meta=_meta,  **options)
+        super().__init_subclass_with_meta__(name=name, _meta=_meta, **options)

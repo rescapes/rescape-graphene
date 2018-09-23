@@ -3,10 +3,10 @@ from rescape_python_helpers import ramda as R
 import graphql_jwt
 from django.contrib.auth import get_user_model, get_user
 from graphene import ObjectType, Schema, Float, InputObjectType, Mutation, Field
-from graphene_django import DjangoObjectType
 from graphene_django.debug import DjangoDebug
 from graphql_jwt.decorators import login_required
 
+from rescape_graphene.schema_models.geojson.types.geojson_type import GeoJsonType
 from rescape_graphene.schema_models.geojson.types.geometry_collection import GeometryCollectionType
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field
 from rescape_graphene.schema_models.geojson.types.geometry_collection import geometry_collection_fields
@@ -34,11 +34,6 @@ user_fields = merge_with_django_properties(UserType, dict(
 ))
 
 
-class FooType(DjangoObjectType):
-    class Meta:
-        model = Foo
-
-
 foo_data_fields = dict(
     example=dict(type=Float),
     # References a User stored in a blob. This tests our ability to reference Django model instance ids in json blobs
@@ -62,6 +57,15 @@ FooDataType = type(
         lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
         foo_data_fields)
 )
+
+
+class FooType(GeoJsonType):
+    """
+        By subclassing GeoJsonType we enable the use of Geometry fields
+    """
+    class Meta:
+        model = Foo
+
 # Modify data field to use the resolver.
 # I guess there's no way to specify a resolver upon field creation, since graphene just reads the underlying
 # Django model to generate the fields
