@@ -54,3 +54,6 @@ class TypesTests(TestCase):
         serialized = geometry_type.serialize(geometry_collection)
         self.assertEqual(geometry_collection.geom_type, serialized['type'])
 
+        # Go backwards and parse
+        geojson_parsed = geometry_type.parse_value(serialized)
+        self.assertEqual(geojson_parsed, geometry_collection)

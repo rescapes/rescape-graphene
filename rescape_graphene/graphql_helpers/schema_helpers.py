@@ -5,7 +5,8 @@ from decimal import Decimal
 
 from graphql.language.printer import print_ast
 import graphene
-from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField, ForeignKey
+from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField, ForeignKey, \
+    GeometryCollectionField
 from graphql import parse
 
 from rescape_python_helpers import ramda as R
@@ -16,8 +17,8 @@ from django.db.models import AutoField, CharField, BooleanField, BigAutoField, D
 from graphene import Scalar, InputObjectType, ObjectType
 from graphql.language import ast
 from inflection import camelize
-# Indicates a CRUD operation is not allowed to use this field
-from rescape_graphene.graphql_helpers.geojson_data_schema import GrapheneGeometry
+
+
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
 logger = logging.getLogger('rescape_graphene')
@@ -168,7 +169,6 @@ def related_input_field_for_crud_type(field_dict_value, parent_type_classes, cru
     """
     return lambda *args, **kwargs: related_input_field(field_dict_value, parent_type_classes, *args, **kwargs)(crud)
 
-
 def django_to_graphene_type(field, field_dict_value, parent_type_classes):
     """
         Resolve the actual Graphene Field type. I can't find a good way to do this automatically.
@@ -205,7 +205,8 @@ def django_to_graphene_type(field, field_dict_value, parent_type_classes):
         UUIDField: graphene.UUID,
         TextField: graphene.String,
         JSONField: graphene.JSONString,
-        GeometryField: GrapheneGeometry
+        #GeometryField: GrapheneGeometry,
+        #GeometryCollectionField: GrapheneGeometryCollection
     }
     cls = field.__class__
     match = R.prop_or(None, cls, types)
@@ -484,7 +485,7 @@ def graphql_query(query_name, fields):
                 )
             )
         )
-        query = '''query someMadeUpString%s { 
+        query = print_ast(parse('''query someMadeUpString%s { 
                 %s%s {
                     %s
                 }
@@ -500,9 +501,9 @@ def graphql_query(query_name, fields):
                     R.keys(variable_definitions))
             ) if variable_definitions else '',
             dump_graphql_keys(field_overrides or fields)
-        )
+        )))
 
-        logger.debug('Query: %s\nKwargs: %s' % (print_ast(parse(query)), kwargs))
+        logger.debug('Query: %s\nKwargs: %s' % (query, kwargs))
         return client.execute(query, **kwargs)
 
     return form_query
@@ -531,7 +532,7 @@ def graphql_update_or_create(mutation_config, fields, client, values):
     # We name the mutation classNameMutation and the parameter classNameData
     # where className is the camel-case version of the given class name in mutation_config.class_name
     name = camelize(R.prop('class_name', mutation_config), False)
-    mutation = ''' 
+    mutation = print_ast(parse(''' 
         mutation %sMutation {
             %s(%sData: %s) {
                 %s {
@@ -547,8 +548,8 @@ def graphql_update_or_create(mutation_config, fields, client, values):
         dump_graphql_data_object(values),
         name,
         dump_graphql_keys(fields)
-    )
-    logger.debug('Mutation: %s' % print_ast(parse(mutation)))
+    )))
+    logger.debug('Mutation: %s' % mutation)
     return client.execute(mutation)
 
 

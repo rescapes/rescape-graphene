@@ -1,17 +1,18 @@
 from unittest import TestCase
 
+import pytest
+
 from ..schema_models.user_schema import user_fields
 
 from .write_helpers import increment_prop_until_unique, enforce_unique_props
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 
-
+@pytest.mark.django_db
 class WriteHelpersTestCase(TestCase):
     client = None
 
     def setUp(self):
-        # Prevent a circular dependency
         get_user_model().objects.update_or_create(username="cat", first_name='Simba', last_name='The Lion',
                                                   password=make_password("roar", salt='not_random'))
         get_user_model().objects.update_or_create(username="cat1", first_name='Felix', last_name='The Cat',

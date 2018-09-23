@@ -47,6 +47,13 @@ from .schema_models.group_schema import (
     graphql_update_or_create,
 )
 
+from .schema_models.geojson import (
+    GeometryType,
+    GrapheneGeometry,
+    GrapheneGeometryCollection,
+    GeometryCollectionType, FeatureDataType, FeatureGeometryDataType, feature_data_type_fields, feature_geometry_data_type_fields
+)
+
 from .graphql_helpers.json_field_helpers import (
     resolver,
     pick_selections,
@@ -54,15 +61,6 @@ from .graphql_helpers.json_field_helpers import (
     model_resolver_for_dict_field,
     resolver_for_dict_list,
     resolver_for_dict_field
-)
-from .graphql_helpers.geojson_data_schema import (
-    GeometryCollectionDataType,
-    GrapheneGeometry,
-    FeatureDataType,
-    FeatureGeometryDataType,
-    feature_data_type_fields,
-    feature_geometry_data_type_fields,
-    geometry_collection_fields
 )
 
 from .graphql_helpers.views import (
@@ -81,4 +79,5 @@ __all__ = [
     'django_helpers.geojson_data_schema',
     'schema_models.user_schema'
     'schama_models.group_schema'
+    'schama_models.geojson'
 ]

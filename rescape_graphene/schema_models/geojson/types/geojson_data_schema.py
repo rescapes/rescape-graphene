@@ -1,10 +1,7 @@
-from django.contrib.gis.geos import GEOSGeometry
-from graphene.types import json
-from graphene import String, ObjectType, List, Field, Scalar
-from graphql.language import ast
+from graphene import String, ObjectType, Field
 
 from rescape_graphene.schema_models.geojson.types import GrapheneGeometry
-from .json_field_helpers import resolver_for_dict_list, resolver_for_dict_field
+from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_field
 from rescape_python_helpers import ramda as R
 
 
@@ -44,25 +41,4 @@ FeatureDataType = type(
         # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
         lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
         feature_data_type_fields)
-)
-
-geometry_collection_fields = dict(
-    # Value is always FeatureCollection
-    type=dict(type=String),
-    features=dict(
-        type=FeatureDataType,
-        graphene_type=FeatureDataType,
-        fields=feature_data_type_fields,
-        type_modifier=lambda typ: List(typ, resolver=resolver_for_dict_list)
-    )
-)
-
-# This matches the fields of GeoDjango's GeometryCollectionField
-GeometryCollectionDataType = type(
-    'GeometryCollectionDataType',
-    (ObjectType,),
-    R.map_with_obj(
-        # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
-        lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
-        geometry_collection_fields)
 )

@@ -1,17 +1,19 @@
-
 import json
-
-from django.contrib.gis.geos import GeometryCollection
-
 import graphene
+from graphene import String, List
 from graphql.language import ast
+from rescape_python_helpers import ramda as R
+from rescape_python_helpers import geometrycollection_from_feature_collection
 
-from rescape_graphene.schema_models.geojson.types import GeometryObjectType
-from .. import resolver
+from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_list
+from rescape_graphene.schema_models.geojson.types.geojson_data_schema import FeatureDataType, feature_data_type_fields
+from rescape_graphene.schema_models.geojson.resolvers import geometry_collection_resolver
+from rescape_graphene.schema_models.geojson.types import GeometryType
+from rescape_graphene.schema_models.geojson.types.geojson_type import GeoJsonType
 
 __all__ = [
     'GrapheneGeometryCollection',
-    'GeometryCollectionObjectType',
+    'GeometryCollectionType',
 ]
 
 
@@ -40,19 +42,44 @@ class GrapheneGeometryCollection(graphene.Scalar):
 
     @classmethod
     def parse_value(cls, value):
-        if isinstance(value, dict):
-            value = json.dumps(value)
-        return GrapheneGeometryCollection(value)
+        return geometrycollection_from_feature_collection(
+            dict(type='FeatureCollection', features=R.map(
+                lambda geometry: dict(type='Feature', geometry=geometry),
+                value['geometries'])
+             )
+        )
 
 
-class GeometryCollectionObjectType(graphene.ObjectType):
+geometry_collection_fields = dict(
+    # type is always 'FeatureCollection'
+    type=dict(type=String),
+    features=dict(
+        type=FeatureDataType,
+        graphene_type=FeatureDataType,
+        fields=feature_data_type_fields,
+        type_modifier=lambda typ: List(typ, resolver=resolver_for_dict_list)
+    )
+)
+
+# This matches the fields of GeoDjango's GeometryCollectionField
+GeometryCollectionType = type(
+    'GeometryCollectionType',
+    (GeoJsonType,),
+    R.map_with_obj(
+        # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
+        lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
+        geometry_collection_fields)
+)
+
+
+class GeometryCollectionTypeX(graphene.ObjectType):
     """
         Graphene representation of a GeoDjango GeometryCollection object
     """
-    geometries = graphene.List(GeometryObjectType)
+    geometries = graphene.List(GeometryType)
 
     class Meta:
-        default_resolver = resolver.geometry_collection_resolver
+        default_resolver = geometry_collection_resolver
         description = """
 `GeometryCollectionObjectType` represents a pair of values:
 - Geometry `type`

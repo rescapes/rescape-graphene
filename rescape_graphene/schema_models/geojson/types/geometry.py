@@ -6,11 +6,11 @@ import graphene
 from graphene.types.generic import GenericScalar
 from graphql.language import ast
 
-from .. import resolver
+from rescape_graphene.schema_models.geojson.resolvers import geometry_resolver
 
 __all__ = [
     'GrapheneGeometry',
-    'GeometryObjectType',
+    'GeometryType',
 ]
 
 
@@ -44,7 +44,7 @@ class GrapheneGeometry(graphene.Scalar):
         return GEOSGeometry(value)
 
 
-class GeometryObjectType(graphene.ObjectType):
+class GeometryType(graphene.ObjectType):
     """
         Graphene representation of a GeoDjango Geometry object
     """
@@ -52,7 +52,7 @@ class GeometryObjectType(graphene.ObjectType):
     coordinates = GenericScalar()
 
     class Meta:
-        default_resolver = resolver.geometry_resolver
+        default_resolver = geometry_resolver
         description = """
 `GeometryObjectType` represents a pair of values:
 - Geometry `type`

@@ -1,16 +1,28 @@
 import logging
 
-from rescape_python_helpers import ramda as R
+import pytest
+from rescape_python_helpers import ramda as R, ewkt_from_feature
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from graphene.test import Client
+from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature_collection
+
 from sample_webapp.sample_schema import schema, graphql_query_foos, Foo
 from snapshottest import TestCase
-from rescape_graphene.schema_models.user_schema import graphql_update_or_create_user, graphql_query_users, \
-    graphql_authenticate_user, graphql_verify_user, graphql_refresh_token
+from rescape_graphene.schema_models.user_schema import graphql_update_or_create_user, graphql_query_users
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+geo_collection = ewkt_from_feature_collection({
+    'type': 'FeatureCollection',
+    'features': [{
+        "type": "Feature",
+        "geometry": {
+            "type": "Polygon", "coordinates": [[[-85, -180], [85, -180], [85, 180], [-85, 180], [-85, -180]]]
+        }
+    }]
+})
 
 
 def smart_execute(schema, *args, **kwargs):
@@ -25,6 +37,7 @@ def smart_execute(schema, *args, **kwargs):
     return schema.schema.execute(*args, **dict(schema.execute_options, **kwargs))
 
 
+@pytest.mark.django_db
 class GenaralTypeCase(TestCase):
     """
         Tests the query methods. This uses User but could be anything
@@ -35,14 +48,23 @@ class GenaralTypeCase(TestCase):
         self.client = Client(schema)
         Foo.objects.all().delete()
         User.objects.all().delete()
-        self.lion, _ = User.objects.update_or_create(username="lion", first_name='Simba', last_name='The Lion',
-                                      password=make_password("roar", salt='not_random'))
-        self.cat, _ = User.objects.update_or_create(username="cat", first_name='Felix', last_name='The Cat',
-                                      password=make_password("meow", salt='not_random'))
-        Foo.objects.update_or_create(key="foolio", name="Foolio", user=self.lion,
-                                     data=dict(example=2.14, friend=dict(id=self.cat.id)))
-        Foo.objects.update_or_create(key="fookit", name="Fookit", user=self.cat,
-                                     data=dict(example=9.01, friend=dict(id=self.lion.id)))
+        self.lion, _ = User.objects.update_or_create(
+            username="lion", first_name='Simba', last_name='The Lion',
+            password=make_password("roar", salt='not_random'),
+        )
+        self.cat, _ = User.objects.update_or_create(
+            username="cat", first_name='Felix', last_name='The Cat',
+            password=make_password("meow", salt='not_random'))
+        Foo.objects.update_or_create(
+            key="foolio", name="Foolio", user=self.lion,
+            data=dict(example=2.14, friend=dict(id=self.cat.id)),
+            geo_collection=geo_collection
+        )
+        Foo.objects.update_or_create(
+            key="fookit", name="Fookit", user=self.cat,
+            data=dict(example=9.01, friend=dict(id=self.lion.id)),
+            geo_collection=geo_collection
+        )
 
     def test_query(self):
         user_results = graphql_query_users(self.client)
@@ -51,9 +73,9 @@ class GenaralTypeCase(TestCase):
 
         # Query using for foos based on the related User
         foo_results = graphql_query_foos(self.client,
-                                    dict(user='UserTypeofFooTypeRelatedReadInputType'),
-                                    variable_values=dict(user=R.pick(['id'], self.lion.__dict__))
-                                    )
+                                         dict(user='UserTypeofFooTypeRelatedReadInputType'),
+                                         variable_values=dict(user=R.pick(['id'], self.lion.__dict__))
+                                         )
         assert not R.has('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
         assert 1 == R.length(R.map(R.omit(['dateJoined', 'password']), R.item_path(['data', 'foos'], foo_results)))
         # Make sure the Django instance in the json blob was resolved

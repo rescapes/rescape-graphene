@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'graphene_django'
 ]
 
+STATIC_URL = '/static/'
+STATIC_ROOT = 'staticfiles'
 CORS_ORIGIN_ALLOW_ALL = True
 
 MIDDLEWARE_CLASSES = [
@@ -117,6 +119,24 @@ REST_FRAMEWORK = {
     ),
 }
 
+ROOT_URLCONF = 'sample_webapp.urls'
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [os.path.join(BASE_DIR, 'sample_webapp/templates')],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+            ],
+        },
+    },
+]
+
 LOG_PATH = os.path.join(BASE_DIR, "log/")
 LOGGING = {
     'version': 1,
@@ -182,7 +202,7 @@ LOGGING = {
         'rescape_graphene': {
             'handlers': ['django_info', 'console'],
             'propagate': True,
-            'level': 'DEBUG',
+            'level': 'INFO',
         }
     },
 }
@@ -194,7 +214,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 GRAPHENE = {
-    'SCHEMA': 'sample_schema',
+    'SCHEMA': 'sample_webapp.sample_schema.schema',
     'MIDDLEWARE': [
         'graphene_django.debug.DjangoDebugMiddleware',
     ]

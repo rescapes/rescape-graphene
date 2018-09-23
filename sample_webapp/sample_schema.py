@@ -7,10 +7,11 @@ from graphene_django import DjangoObjectType
 from graphene_django.debug import DjangoDebug
 from graphql_jwt.decorators import login_required
 
-from rescape_graphene.graphql_helpers.geojson_data_schema import GeometryCollectionDataType, geometry_collection_fields
+from rescape_graphene.schema_models.geojson.types.geometry_collection import GeometryCollectionType
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field
+from rescape_graphene.schema_models.geojson.types.geometry_collection import geometry_collection_fields
 
-from rescape_graphene.schema_models.user_schema import UserType, user_fields, CreateUser, UpdateUser
+from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser
 from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_arguments, REQUIRE, \
     merge_with_django_properties, guess_update_or_create, \
     CREATE, UPDATE, input_type_parameters_for_update_or_create, graphql_update_or_create, graphql_query, \
@@ -46,6 +47,7 @@ foo_data_fields = dict(
     # details of the user--it can query separately for that. We could offer all fields in a query only
     # version of these fields
     friend=dict(
+        type=UserType,
         graphene_type=UserType,
         fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE))),
         type_modifier=lambda typ: Field(typ, resolver=model_resolver_for_dict_field(get_user_model()))
@@ -84,7 +86,7 @@ foo_fields = merge_with_django_properties(FooType, dict(
     user=dict(graphene_type=UserType, fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE)))),
     geo_collection=dict(
         create=REQUIRE,
-        graphene_type=GeometryCollectionDataType,
+        graphene_type=GeometryCollectionType,
         fields=geometry_collection_fields
     )
 ))
