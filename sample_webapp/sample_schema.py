@@ -1,12 +1,13 @@
 import graphene
+from graphene_django import DjangoObjectType
 from rescape_python_helpers import ramda as R
 import graphql_jwt
 from django.contrib.auth import get_user_model, get_user
 from graphene import ObjectType, Schema, Float, InputObjectType, Mutation, Field
 from graphene_django.debug import DjangoDebug
+from rescape_graphene import increment_prop_until_unique, enforce_unique_props
 from graphql_jwt.decorators import login_required
 
-from rescape_graphene.schema_models.geojson.types.geojson_type import GeoJsonType
 from rescape_graphene.schema_models.geojson.types.geometry_collection import GeometryCollectionType
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field
 from rescape_graphene.schema_models.geojson.types.geometry_collection import geometry_collection_fields
@@ -59,7 +60,7 @@ FooDataType = type(
 )
 
 
-class FooType(GeoJsonType):
+class FooType(DjangoObjectType):
     """
         By subclassing GeoJsonType we enable the use of Geometry fields
     """
@@ -77,7 +78,7 @@ def feature_fields_in_graphql_geojson_format(args):
 
 
 foo_fields = merge_with_django_properties(FooType, dict(
-    key=dict(create=REQUIRE),
+    key=dict(create=REQUIRE, unique_with=increment_prop_until_unique(Foo, None, 'key')),
     name=dict(create=REQUIRE),
     created_at=dict(),
     updated_at=dict(),
