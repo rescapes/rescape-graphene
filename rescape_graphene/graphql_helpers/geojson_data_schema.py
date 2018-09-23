@@ -2,43 +2,16 @@ from django.contrib.gis.geos import GEOSGeometry
 from graphene.types import json
 from graphene import String, ObjectType, List, Field, Scalar
 from graphql.language import ast
+
+from rescape_graphene.schema_models.geojson.types import GrapheneGeometry
 from .json_field_helpers import resolver_for_dict_list, resolver_for_dict_field
 from rescape_python_helpers import ramda as R
-
-
-# Extracted from https://github.com/flavors/django-graphql-geojson
-class Geometry(Scalar):
-
-    class Meta:
-        description = """
-`Geometry` scalar may be represented in a few ways:
-- Well-known text (WKT)
-- Hexadecimal (HEX)
-- GeoJSON
-"""
-
-    @classmethod
-    def serialize(cls, value):
-        return json.loads(value.geojson)
-
-    @classmethod
-    def parse_literal(cls, node):
-        if isinstance(node, ast.StringValue):
-            return cls.parse_value(node.value)
-        return None
-
-    @classmethod
-    def parse_value(cls, value):
-        if isinstance(value, dict):
-            value = json.dumps(value)
-        return GEOSGeometry(value)
-
 
 
 feature_geometry_data_type_fields = dict(
     # Polygon, Linestring, Point, etc
     type=dict(type=String),
-    coordinates=dict(type=Geometry)
+    coordinates=dict(type=GrapheneGeometry)
 )
 
 # This matches the fields of GeoDjango's GeometryCollectionField features[...].geometry property

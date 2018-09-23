@@ -17,7 +17,7 @@ from graphene import Scalar, InputObjectType, ObjectType
 from graphql.language import ast
 from inflection import camelize
 # Indicates a CRUD operation is not allowed to use this field
-from rescape_graphene.graphql_helpers.geojson_data_schema import Geometry
+from rescape_graphene.graphql_helpers.geojson_data_schema import GrapheneGeometry
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
 logger = logging.getLogger('rescape_graphene')
@@ -205,7 +205,7 @@ def django_to_graphene_type(field, field_dict_value, parent_type_classes):
         UUIDField: graphene.UUID,
         TextField: graphene.String,
         JSONField: graphene.JSONString,
-        GeometryField: Geometry
+        GeometryField: GrapheneGeometry
     }
     cls = field.__class__
     match = R.prop_or(None, cls, types)

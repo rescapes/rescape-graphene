@@ -57,7 +57,7 @@ from .graphql_helpers.json_field_helpers import (
 )
 from .graphql_helpers.geojson_data_schema import (
     GeometryCollectionDataType,
-    Geometry,
+    GrapheneGeometry,
     FeatureDataType,
     FeatureGeometryDataType,
     feature_data_type_fields,
