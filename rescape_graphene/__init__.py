@@ -51,16 +51,19 @@ from .schema_models.geojson import (
     GeometryType,
     GrapheneGeometry,
     GrapheneGeometryCollection,
-    GeometryCollectionType, FeatureDataType, FeatureGeometryDataType, feature_data_type_fields, feature_geometry_data_type_fields
+    GeometryCollectionType, FeatureDataType, FeatureGeometryDataType, feature_data_type_fields,
+    feature_geometry_data_type_fields
 )
 
 from .graphql_helpers.json_field_helpers import (
     resolver,
+    resolver_for_geometry_collection,
+    type_modify_fields,
     pick_selections,
     resolve_selections,
     model_resolver_for_dict_field,
-    resolver_for_dict_list,
-    resolver_for_dict_field
+    resolver_for_dict_field,
+    resolver_for_dict_list
 )
 
 from .graphql_helpers.views import (

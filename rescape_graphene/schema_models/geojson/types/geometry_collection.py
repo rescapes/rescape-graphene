@@ -66,18 +66,3 @@ GeometryCollectionType = type(
     (graphene.ObjectType,),
     type_modify_fields(geometry_collection_fields)
 )
-
-
-class GeometryCollectionTypeX(graphene.ObjectType):
-    """
-        Graphene representation of a GeoDjango GeometryCollection object
-    """
-    geometries = graphene.List(GeometryType)
-
-    class Meta:
-        default_resolver = geometry_collection_resolver
-        description = """
-`GeometryCollectionObjectType` represents a pair of values:
-- Geometry `type`
-- Geometry `coordinates`
-"""
