@@ -86,6 +86,7 @@ class DataPointRelatedCreateInputType(InputObjectType):
 
 @memoize(map_args=lambda args: [
     args[0]['graphene_type'],
+    R.prop_or('', 'type', args[0]),
     args[1],
     # TODO We use the parent_type_class to make each type unique. I don't know why graphene won't let us reuse
     # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
@@ -106,7 +107,8 @@ def input_type_class(field_dict_value, crud, parent_type_classes=[]):
     :return: An InputObjectType subclass
     """
     # Get the Graphene type. This comes from graphene_type if the class containing the field is a Django Model,
-    # Otherwise it comes from type, since we don't need type for the Django model
+    # It defaults to type, which is what we expect if we didn't have to use a graphene_type to distinguish
+    # from the underlying Django type
     graphene_class = field_dict_value['graphene_type'] or field_dict_value['type']
     # Make it an array if not
     modified_parent_type_classes = parent_type_classes if R.isinstance((list, tuple), parent_type_classes) else [

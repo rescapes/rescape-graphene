@@ -59,7 +59,8 @@ class GeometryCoordinates(graphene.Scalar):
 
     @classmethod
     def serialize(cls, value):
-        return pickle.dumps(value)
+        # Do nothing, let the view serializer to the arrays to json
+        return value
 
     @classmethod
     def parse_literal(cls, node):

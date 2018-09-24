@@ -1,6 +1,8 @@
+import ast
 from collections import namedtuple
 from rescape_python_helpers import ramda as R
 from inflection import underscore
+
 
 ###
 # Helpers for json fields. json fields are not a Django model,
@@ -59,7 +61,7 @@ def resolver_for_dict_list(resource, context):
 @R.curry
 def model_resolver_for_dict_field(model_class, resource, context):
     """
-        Resolver for the data field. This extracts the desired json fields from the context
+        Resolves a Django model referenced in a data field. This extracts the desired json fields from the context
         and creates a tuple of the field values. Graphene has no built in way for querying json types
         TODO this naively assumes that the 'id' property is among the query selections and uses that
         to resolve the instance
@@ -77,8 +79,10 @@ def model_resolver_for_dict_field(model_class, resource, context):
 @R.curry
 def resolver(json_field_name, resource, context):
     """
-        Resolver for the data field. This extracts the desired json fields from the context
-        and creates a tuple of the field values. Graphene has no built in way for querying json types
+        Resolver for a data field on a Django model. Note the difference from model_resolver_for_dict_field,
+        which goes the other direction and finds a django instance referenced within a data field blob.
+        This extracts the desired json fields from the context and creates a tuple of the field values.
+        Graphene has no built in way for querying json types.
     :param {string} json_field_name: Name of the field on the resource that is the json field (such as 'data')
     :param {string} resource: The instance whose json field data is being resolved
     :param {ResolveInfo} context: Graphene context which contains the fields queried in field_asts
@@ -87,15 +91,62 @@ def resolver(json_field_name, resource, context):
 
     # Take the camelized keys and underscore (slugify) to get them back to python form
     selections = R.map(lambda sel: underscore(sel.name.value), context.field_asts[0].selection_set.selections)
-    # Identify the keys that are actually in resource[json_field_name]
+    # This is the dict we're interested in
+    dct = R.prop(json_field_name, resource)
+    # Identify the keys that are actually in the dct
     all_selections = R.filter(
-        lambda key: key in R.prop(json_field_name, resource), selections
+        lambda key: key in dct,
+        selections
     )
     # Pick out the values that we want
-    dct = R.pick(all_selections, resource.data)
+    result = R.pick(all_selections, dct)
 
     # Return in the standard Graphene DataTuple
-    return namedtuple('DataTuple', R.keys(dct))(*R.values(dct))
+    return namedtuple('DataTuple', R.keys(result))(*R.values(result))
+
+
+@R.curry
+def resolver_for_geometry_collection(json_field_name, resource, context):
+    """
+        Like resolver but takes care of converting the geos value stored in the field to a dict that
+        has the values we want to resolve, namely type and features.
+    :param {string} json_field_name: Name of the field on the resource that is the json field (such as 'data')
+    :param {string} resource: The instance whose json field data is being resolved
+    :param {ResolveInfo} context: Graphene context which contains the fields queried in field_asts
+    :return: {DataTuple} Standard resolver return value
+    """
+
+    # Take the camelized keys and underscore (slugify) to get them back to python form
+    selections = R.map(lambda sel: underscore(sel.name.value), context.field_asts[0].selection_set.selections)
+    # Recover the json by parsing the string provided by GeometryCollection and mapping the geometries property to features
+    json = R.compose(
+        # Map the value GeometryCollection to FeatureCollection for the type property
+        R.map_with_obj(lambda k, v: R.if_else(
+            R.equals('type'),
+            R.always('FeatureCollection'),
+            R.always(v)
+        )(k)),
+        # Map geometries to features: [{type: Feature, geometry: geometry}]
+        lambda dct: R.merge(
+            # Remove geometries
+            R.omit(['geometries'], dct),
+            # Add features containing the geometries
+            dict(features=R.map(
+                lambda geometry: dict(type='Feature', geometry=geometry),
+                R.prop_or([], 'geometries', dct))
+            )
+        ),
+    )(ast.literal_eval(R.prop(json_field_name, resource).json))
+    # Identify the keys that are actually in resource[json_field_name]
+    all_selections = R.filter(
+        lambda key: key in json,
+        selections
+    )
+    # Pick out the values that we want
+    result = R.pick(all_selections, json)
+
+    # Return in the standard Graphene DataTuple
+    return namedtuple('DataTuple', R.keys(result))(*R.values(result))
 
 
 def type_modify_fields(data_field_configs):

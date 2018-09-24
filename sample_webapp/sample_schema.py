@@ -12,7 +12,7 @@ from graphql_jwt.decorators import login_required
 
 from rescape_graphene.schema_models.geojson.types.geometry_collection import GeometryCollectionType
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field, \
-    type_modify_fields
+    type_modify_fields, resolver_for_geometry_collection
 from rescape_graphene.schema_models.geojson.types.geometry_collection import geometry_collection_fields
 
 from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser
@@ -73,6 +73,7 @@ class FooType(DjangoObjectType):
 # I guess there's no way to specify a resolver upon field creation, since graphene just reads the underlying
 # Django model to generate the fields
 FooType._meta.fields['data'] = Field(FooDataType, resolver=resolver('data'))
+FooType._meta.fields['geo_collection'] = Field(GeometryCollectionType, resolver=resolver_for_geometry_collection('geo_collection'))
 
 
 def feature_fields_in_graphql_geojson_format(args):

@@ -56,7 +56,7 @@ geometry_collection_fields = dict(
         type=FeatureDataType,
         graphene_type=FeatureDataType,
         fields=feature_data_type_fields,
-        type_modifier=lambda typ: List(typ) #, resolver=resolver_for_dict_list)
+        type_modifier=lambda typ: List(typ, resolver=resolver_for_dict_list)
     )
 )
 
