@@ -96,3 +96,44 @@ def resolver(json_field_name, resource, context):
 
     # Return in the standard Graphene DataTuple
     return namedtuple('DataTuple', R.keys(dct))(*R.values(dct))
+
+
+def type_modify_fields(data_field_configs):
+    """
+        Converts json field configs based on if they have a type_modifier property. The type_modifier property
+        allows us to make the type defined at graphene_type to be a Field or a List, depending on what we need
+    :param data_field_configs: List of field configs that each might have type_modifier. Exmample:
+    [
+        # This is a field that points to a Django type User, so it resolves to Field(UserType)
+        # with a resolver that handles Django models
+        friend=dict(
+            type=UserType,
+            graphene_type=UserType,
+            fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE))),
+            type_modifier=lambda typ: Field(typ, resolver=model_resolver_for_dict_field(get_user_model()))
+        ),
+        # This is a field that points to a json dict modeled in graphene with ViewportDataType, so it
+        resolves to Field(UserRegionDataType) with a resolver that handles a dict
+        viewport=dict(
+            type=ViewportDataType,
+            graphene_type=ViewportDataType,
+            fields=viewport_data_fields,
+            type_modifier=lambda typ: Field(typ, resolver=resolver_for_dict_field),
+        )
+        # This is a field that points to a json list of dicts, each modeled in graphene with UserRegionDataType, so it
+        resolves to List(UserRegionDataType) with a resolver that handles lists of dicts
+        user_regions=dict(
+            type=UserRegionDataType,
+            graphene_type=UserRegionDataType,
+            fields=user_region_data_fields,
+            type_modifier=lambda typ: List(typ, resolver=resolver_for_dict_list)
+        )
+    ]
+    :return: A list of Graphene Fields, created by mapping the field_configs. If the field_config has
+    a type_modifier then it is called with field_config['type'] and its result is returned. Otherwise
+    we simply call field_config['type']() to construct an instance of the type
+    """
+    return R.map_with_obj(
+        # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
+        lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
+        data_field_configs)

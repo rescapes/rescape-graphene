@@ -201,7 +201,7 @@ LOGGING = {
         },
         'rescape_graphene': {
             'handlers': ['django_info', 'console'],
-            'propagate': True,
+            'propagate': False,
             'level': 'DEBUG',
         }
     },

@@ -1,6 +1,6 @@
 from graphene import String, ObjectType, Field
 
-from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_field
+from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_field, type_modify_fields
 from rescape_python_helpers import ramda as R
 
 from rescape_graphene.schema_models.geojson.types.geometry import GeometryCoordinates
@@ -8,6 +8,8 @@ from rescape_graphene.schema_models.geojson.types.geometry import GeometryCoordi
 feature_geometry_data_type_fields = dict(
     # Polygon, Linestring, Point, etc
     type=dict(type=String),
+    # Geometry Coordinates is a graphene.Scalar specially designed to handle arrays of of coordinates,
+    # Either a single array point, a linestring array of points, or a (multi)polygon, array of array of points
     coordinates=dict(type=GeometryCoordinates)
 )
 
@@ -15,11 +17,7 @@ feature_geometry_data_type_fields = dict(
 FeatureGeometryDataType = type(
     'FeatureGeometryDataType',
     (ObjectType,),
-    R.map_with_obj(
-        # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
-        lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
-        feature_geometry_data_type_fields
-    )
+    type_modify_fields(feature_geometry_data_type_fields)
 )
 
 feature_data_type_fields = dict(
@@ -37,8 +35,5 @@ feature_data_type_fields = dict(
 FeatureDataType = type(
     'FeatureDataType',
     (ObjectType,),
-    R.map_with_obj(
-        # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
-        lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
-        feature_data_type_fields)
+    type_modify_fields(feature_data_type_fields)
 )

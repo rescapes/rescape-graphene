@@ -11,7 +11,8 @@ from rescape_graphene import increment_prop_until_unique, enforce_unique_props
 from graphql_jwt.decorators import login_required
 
 from rescape_graphene.schema_models.geojson.types.geometry_collection import GeometryCollectionType
-from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field
+from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field, \
+    type_modify_fields
 from rescape_graphene.schema_models.geojson.types.geometry_collection import geometry_collection_fields
 
 from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser
@@ -52,19 +53,18 @@ foo_data_fields = dict(
     )
 )
 
+# This is the Graphene type for the Foo.data field. Note that we use foo_data_fields for the Field
+# and pass them through type_modify_fields to handle the type_modifier lambda of Foo.data['friend']
 FooDataType = type(
     'FooDataType',
     (ObjectType,),
-    R.map_with_obj(
-        # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
-        lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
-        foo_data_fields)
+    type_modify_fields(foo_data_fields)
 )
 
 
 class FooType(DjangoObjectType):
     """
-        By subclassing GeoJsonType we enable the use of Geometry fields
+        This is the Graphene Type for Foo.
     """
     class Meta:
         model = Foo
@@ -116,7 +116,9 @@ class UpsertFoo(Mutation):
 
     def mutate(self, info, foo_data=None):
         modified_foo_data = R.merge(
-            foo_data,
+            # Make sure unique fields are enforced, here by incrementing foo.key
+            enforce_unique_props(foo_fields, foo_data),
+            # Force the
             dict(geo_collection=ewkt_from_feature_collection(foo_data['geo_collection'])) if R.prop('geo_collection', foo_data) else {}
         )
         update_or_create_values = input_type_parameters_for_update_or_create(foo_fields, modified_foo_data)

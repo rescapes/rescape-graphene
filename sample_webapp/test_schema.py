@@ -122,6 +122,7 @@ class GenaralTypeCase(TestCase):
         created = result_path_partial(result)
         # look at the Foo added and omit the non-determinant dateJoined
         self.assertMatchSnapshot(R.omit_deep(omit_props, created))
+
         # Try creating the same Foo again, because of the unique constraint on key and the unique_with property
         # on its field definition value, it will increment to luxembourg1
         new_result = graphql_update_or_create_foo(self.client, values)
@@ -147,12 +148,12 @@ class GenaralTypeCase(TestCase):
         assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
         self.assertMatchSnapshot(R.omit_deep(omit_props, R.item_path(['data', 'updateUser', 'user'], result)))
 
-        # def test_delete(self):
-        #     self.assertMatchSnapshot(self.client.execute('''{
-        #         users {
-        #             username,
-        #             first_name,
-        #             last_name,
-        #             password
-        #         }
-        #     }'''))
+    # def test_delete(self):
+    #     self.assertMatchSnapshot(self.client.execute('''{
+    #         users {
+    #             username,
+    #             first_name,
+    #             last_name,
+    #             password
+    #         }
+    #     }'''))

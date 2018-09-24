@@ -5,7 +5,7 @@ from graphql.language import ast
 from rescape_python_helpers import ramda as R
 from rescape_python_helpers import geometrycollection_from_feature_collection
 
-from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_list
+from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_list, type_modify_fields
 from rescape_graphene.schema_models.geojson.types.geojson_data_schema import FeatureDataType, feature_data_type_fields
 from rescape_graphene.schema_models.geojson.resolvers import geometry_collection_resolver
 from rescape_graphene.schema_models.geojson.types import GeometryType
@@ -64,10 +64,7 @@ geometry_collection_fields = dict(
 GeometryCollectionType = type(
     'GeometryCollectionType',
     (graphene.ObjectType,),
-    R.map_with_obj(
-        # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
-        lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
-        geometry_collection_fields)
+    type_modify_fields(geometry_collection_fields)
 )
 
 

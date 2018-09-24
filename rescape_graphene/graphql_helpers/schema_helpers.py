@@ -528,6 +528,9 @@ def graphql_update_or_create(mutation_config, fields, client, values):
     :param values: key values of what to update. keys can be slugs or camel case. They will be converted to camel
     :return:
     """
+
+    # 'update' or 'create'. The default way of guessing is looking for presence of the 'id' property
+    # and guessing 'create' if id is missing
     update_or_create = guess_update_or_create(values)
     # We name the mutation classNameMutation and the parameter classNameData
     # where className is the camel-case version of the given class name in mutation_config.class_name
@@ -540,14 +543,23 @@ def graphql_update_or_create(mutation_config, fields, client, values):
                 }
             }
         }''' % (
+        # The arbitrary(?) name for the mutation e.g. 'foo' makes 'fooMutation'. Consistant naming might be important
+        # for caching
         name,
-        # This will be createClass or updateClass where class is the class name
+        # Actual schema function which matches something in the schema
+        # This will be createClass or updateClass where class is the class name e.g. createFoo or updateFoo
+        # Keep in mind that in python in the schema it will be defined create_foo or update_foo
         R.item_path(['crud', update_or_create], mutation_config),
+        # The name of the InputDataType that is defined for this function, e.g. FooInputDataType
         name,
-        # Key values for what is being created or updated
+        # Key values for what is being created or updated. This is dumped recursively and matches the structure
+        # of the InputDataType subclass
         dump_graphql_data_object(values),
+        # Again the name, this time used for the structure of the return query e.g. foo { ...return value ...}
         name,
-        dump_graphql_keys(fields)
+        # The return query dump, which are all the fields available. One catch is we need to add the id,
+        # which isn't part of field_configs because Graphene handles ids automatically
+        dump_graphql_keys(R.merge(dict(id=dict(type=graphene.Int)), fields)),
     )))
     logger.debug('Mutation: %s' % mutation)
     return client.execute(mutation)
