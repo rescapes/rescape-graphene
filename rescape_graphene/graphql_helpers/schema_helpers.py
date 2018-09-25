@@ -85,8 +85,8 @@ class DataPointRelatedCreateInputType(InputObjectType):
 
 
 @memoize(map_args=lambda args: [
+    # Only use graphene_type here. type is a function and can't be serialized
     args[0]['graphene_type'],
-    R.prop_or('', 'type', args[0]),
     args[1],
     # TODO We use the parent_type_class to make each type unique. I don't know why graphene won't let us reuse
     # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
