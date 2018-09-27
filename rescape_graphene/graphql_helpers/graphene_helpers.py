@@ -86,7 +86,7 @@ def full_stack():
 
 def quote(value, tab=-1):
     """
-        Puts strings in quotes and but not numbers.
+        Puts string but not numbers.
         If value is a dict it is represented as as
         key: value,
         key: value

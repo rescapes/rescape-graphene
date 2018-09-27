@@ -13,11 +13,10 @@ from inflection import underscore
 def resolve_selections(context):
     """
         Returns the query fields for the current context.
-        Take the camelized keys and underscore (slugify) to get them back to python form
     :param {ResolveInfo} context: The graphene resolution context
     :return: {[String]} The field names to that are in the query
     """
-    return R.map(lambda sel: underscore(sel.name.value), context.field_asts[0].selection_set.selections)
+    return R.map(lambda sel: sel.name.value, context.field_asts[0].selection_set.selections)
 
 
 def pick_selections(selections, data):
@@ -40,7 +39,8 @@ def resolver_for_dict_field(resource, context):
     :return:
     """
     selections = resolve_selections(context)
-    field_name = underscore(context.field_name)
+    field_name = context.field_name
+    # Pick the selections from our resource json field value
     return pick_selections(selections, getattr(resource, field_name))
 
 
@@ -54,7 +54,7 @@ def resolver_for_dict_list(resource, context):
     """
     # Take the camelized keys and underscore (slugify) to get them back to python form
     selections = resolve_selections(context)
-    field_name = underscore(context.field_name)
+    field_name = context.field_name
     return R.map(lambda data: pick_selections(selections, data), getattr(resource, field_name))
 
 
