@@ -1,7 +1,6 @@
 from graphene import String, ObjectType, Field
 
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_field, type_modify_fields
-from rescape_python_helpers import ramda as R
 
 from rescape_graphene.schema_models.geojson.types.geometry import GeometryCoordinates
 
@@ -23,6 +22,8 @@ FeatureGeometryDataType = type(
 feature_data_type_fields = dict(
     # Always Feature
     type=dict(type=String),
+    # The OpenStreetMap id, if this is OSM geojson
+    id=dict(type=String),
     geometry=dict(
         type=FeatureGeometryDataType,
         graphene_type=FeatureGeometryDataType,
