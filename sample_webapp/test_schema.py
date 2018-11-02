@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Keep these out of snapshot comparisons since they change depending on what tests are run and/or when
 omit_props = ['id', 'createdAt', 'updatedAt', 'dateJoined', 'password']
 
-geo_collection = ewkt_from_feature_collection({
+initial_geojson = {
     'type': 'FeatureCollection',
     'features': [{
         "type": "Feature",
@@ -25,7 +25,7 @@ geo_collection = ewkt_from_feature_collection({
             "type": "Polygon", "coordinates": [[[-85, -180], [85, -180], [85, 180], [-85, 180], [-85, -180]]]
         }
     }]
-})
+}
 
 
 def smart_execute(schema, *args, **kwargs):
@@ -61,12 +61,14 @@ class GenaralTypeCase(TestCase):
         Foo.objects.update_or_create(
             key="foolio", name="Foolio", user=self.lion,
             data=dict(example=2.14, friend=dict(id=self.cat.id)),
-            geo_collection=geo_collection
+            geo_collection=ewkt_from_feature_collection(initial_geojson),
+            geojson=initial_geojson
         )
         Foo.objects.update_or_create(
             key="fookit", name="Fookit", user=self.cat,
             data=dict(example=9.01, friend=dict(id=self.lion.id)),
-            geo_collection=geo_collection
+            geo_collection=ewkt_from_feature_collection(initial_geojson),
+            geojson=initial_geojson
         )
 
     def test_query(self):
@@ -102,7 +104,7 @@ class GenaralTypeCase(TestCase):
                 example=1.5,
                 friend=dict(id=self.lion.id)  # self love
             ),
-            geo_collection={
+            geojson={
                 'type': 'FeatureCollection',
                 'generator': 'Open Street Map',
                 'copyright': '2018',

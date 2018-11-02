@@ -19,7 +19,7 @@ from rescape_graphene.schema_models.user_schema import UserType, CreateUser, Upd
 from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_arguments, REQUIRE, \
     merge_with_django_properties, guess_update_or_create, \
     CREATE, UPDATE, input_type_parameters_for_update_or_create, graphql_update_or_create, graphql_query, \
-    input_type_fields, DENY, stringify_query_kwargs
+    input_type_fields, DENY, stringify_query_kwargs, IGNORE
 
 # configuration for the builtin User modal
 from sample_webapp.models import Foo
@@ -36,7 +36,6 @@ user_fields = merge_with_django_properties(UserType, dict(
     is_active=dict(type=graphene.Boolean),
     date_joined=dict(type=graphene.Boolean, create=DENY, update=DENY)
 ))
-
 
 foo_data_fields = dict(
     example=dict(type=Float),
@@ -66,14 +65,18 @@ class FooType(DjangoObjectType):
     """
         This is the Graphene Type for Foo.
     """
+
     class Meta:
         model = Foo
+
 
 # Modify data field to use the resolver.
 # I guess there's no way to specify a resolver upon field creation, since graphene just reads the underlying
 # Django model to generate the fields
 FooType._meta.fields['data'] = Field(FooDataType, resolver=resolver('data'))
-FooType._meta.fields['geo_collection'] = Field(GeometryCollectionType, resolver=resolver_for_geometry_collection('geo_collection'))
+FooType._meta.fields['geojson'] = Field(GeometryCollectionType, resolver=resolver('geojson'))
+FooType._meta.fields['geo_collection'] = Field(GeometryCollectionType,
+                                               resolver=resolver_for_geometry_collection('geo_collection'))
 
 
 def feature_fields_in_graphql_geojson_format(args):
@@ -92,10 +95,20 @@ foo_fields = merge_with_django_properties(FooType, dict(
     # For simplicity we limit fields to id. Mutations can only us id, and a query doesn't need other
     # details of the user--it can query separately for that
     user=dict(graphene_type=UserType, fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE)))),
-    geo_collection=dict(
+    geojson=dict(
         create=REQUIRE,
         graphene_type=GeometryCollectionType,
         fields=geometry_collection_fields
+    ),
+    # This is just geojson as GeosGeometryCollection, so it maintains the geometry but loses other geojson properties
+    # It's kept synced to the geojson in the UpsertFoo mutate function. In practice this probably isn't needed
+    # since in PostGIS we could just extract the geometry from geojson
+    geo_collection=dict(
+        create=DENY,
+        update=DENY,
+        read=IGNORE,
+        graphene_type=GeometryCollectionType,
+        fields=geometry_collection_fields,
     )
 ))
 
@@ -119,8 +132,12 @@ class UpsertFoo(Mutation):
         modified_foo_data = R.merge(
             # Make sure unique fields are enforced, here by incrementing foo.key
             enforce_unique_props(foo_fields, foo_data),
-            # Force the
-            dict(geo_collection=ewkt_from_feature_collection(foo_data['geo_collection'])) if R.prop('geo_collection', foo_data) else {}
+            dict(
+                # Force the FeatureCollection geojson into the GEOSGeometryCollection. This is just Geometry
+                geo_collection=ewkt_from_feature_collection(foo_data['geojson']) if R.prop('geojson', foo_data) else {},
+                # Put the full FeatureCollection geojson into the geojson field.
+                geojson=foo_data['geojson'] if R.prop('geojson', foo_data) else {}
+            )
         )
         update_or_create_values = input_type_parameters_for_update_or_create(foo_fields, modified_foo_data)
         foo, created = Foo.objects.update_or_create(**update_or_create_values)

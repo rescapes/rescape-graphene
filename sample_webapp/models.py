@@ -22,6 +22,9 @@ class Foo(Model):
     user = ForeignKey(get_user_model(), on_delete=models.DO_NOTHING)
     # Example of geojson container
     geo_collection = GeometryCollectionField(null=False)
+    # This stores the full geojson, whereas geo_collection only stores geometry for PostGIS operations
+    # The two must be kept in sync. It might be better to get rid of geo_collection and just use this
+    geojson = JSONField(null=False)
 
     class Meta:
         app_label = "sample_webapp"

@@ -20,7 +20,7 @@ def handleGrapheneTypes(key, value):
 def dump_graphql_keys(dct):
     """
         Convert a dict to a graphql input parameter keys in the form
-        Also camelizes keys if the are slugs and handles complex types
+        Also camelizes keys if the are slugs and handles complex types. If a value has read=IGNORE it is omitted
         key1
         key2
         key3
@@ -32,10 +32,11 @@ def dump_graphql_keys(dct):
     :param dct: keyed by field
     :return:
     """
+    from rescape_graphene.graphql_helpers.schema_helpers import IGNORE
     return R.join('\n', R.values(R.map_with_obj(
         dump_graphene_type,
-        dct)
-    ))
+        R.filter_dict(lambda key_value: R.not_func(R.prop_eq('read', IGNORE, key_value[1])), dct)
+    )))
 
 
 def dump_graphene_type(key, value):
@@ -142,4 +143,3 @@ def quote_list(lst, tab):
 
 def quote_str(str):
     return '"{0}"'.format(str)
-

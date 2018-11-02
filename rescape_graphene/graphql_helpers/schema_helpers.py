@@ -36,6 +36,8 @@ REQUIRE = 'require'
 # Similarly data_points fields like blockname can't be updated except by an admin mutation
 # All fields that are REQUIRE_UNIQUE should probably always match a database constraint for those fields
 UNIQUE = 'unique'
+# Don't display the value for reads
+IGNORE = 'ignore'
 # UNIQUE primary key
 PRIMARY = 'primary'
 
@@ -170,6 +172,7 @@ def related_input_field_for_crud_type(field_dict_value, parent_type_classes, cru
     :return:
     """
     return lambda *args, **kwargs: related_input_field(field_dict_value, parent_type_classes, *args, **kwargs)(crud)
+
 
 def django_to_graphene_type(field, field_dict_value, parent_type_classes):
     """
@@ -558,7 +561,8 @@ def graphql_update_or_create(mutation_config, fields, client, values):
         dump_graphql_data_object(values),
         # Again the name, this time used for the structure of the return query e.g. foo { ...return value ...}
         name,
-        # The return query dump, which are all the fields available. One catch is we need to add the id,
+        # The return query dump, which are all the fields available that aren't marked read=IGNORE.
+        # One catch is we need to add the id,
         # which isn't part of field_configs because Graphene handles ids automatically
         dump_graphql_keys(R.merge(dict(id=dict(type=graphene.Int)), fields)),
     )))
