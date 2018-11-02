@@ -1,8 +1,12 @@
+import graphene
 from graphene import String, ObjectType, Field
+from graphene.types.generic import GenericScalar
+from graphql.language.ast import ListValue
 
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_field, type_modify_fields
 
 from rescape_graphene.schema_models.geojson.types.geometry import GeometryCoordinates
+from rescape_python_helpers import ramda as R
 
 feature_geometry_data_type_fields = dict(
     # Polygon, Linestring, Point, etc
@@ -29,6 +33,10 @@ feature_data_type_fields = dict(
         graphene_type=FeatureGeometryDataType,
         fields=feature_geometry_data_type_fields,
         type_modifier=lambda typ: Field(typ, resolver=resolver_for_dict_field),
+    ),
+    # Arbitrary geojson properties for the Feature
+    properties=dict(
+        type=GenericScalar
     )
 )
 

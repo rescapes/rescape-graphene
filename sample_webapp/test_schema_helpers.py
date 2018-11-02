@@ -12,12 +12,14 @@ from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_argume
 from snapshottest import TestCase
 from rescape_python_helpers import ramda as R
 
+from sample_webapp.testcases import test_client
+
 
 class SchemaHelpersTypeCase(TestCase):
     client = None
 
     def setUp(self):
-        self.client = Client(schema)
+        self.client = test_client(schema)
 
     def test_merge_with_django_properties(self):
 

@@ -48,8 +48,6 @@ from .schema_models.group_schema import (
 )
 
 from .schema_models.geojson import (
-    GeometryType,
-    GrapheneGeometry,
     GrapheneGeometryCollection,
     GeometryCollectionType, FeatureDataType, FeatureGeometryDataType, feature_data_type_fields,
     feature_geometry_data_type_fields

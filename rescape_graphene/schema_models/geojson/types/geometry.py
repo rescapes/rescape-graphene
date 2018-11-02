@@ -12,36 +12,8 @@ from graphql.language import ast
 from rescape_graphene.schema_models.geojson.resolvers import geometry_resolver
 
 __all__ = [
-    'GrapheneGeometry',
-    'GeometryType',
+    'GeometryCoordinates'
 ]
-
-
-class GrapheneGeometry(graphene.Scalar):
-    """
-        Graphene representation for a GeoDjango Coordinates
-    """
-
-    class Meta:
-        description = """
-`Geometry` coordinates are one, two, or three dimensional array of floats representing points
-"""
-
-    @classmethod
-    def serialize(cls, value):
-        return json.loads(value.geojson)
-
-    @classmethod
-    def parse_literal(cls, node):
-        if isinstance(node, ast.StringValue):
-            return cls.parse_value(node.value)
-        return None
-
-    @classmethod
-    def parse_value(cls, value):
-        if isinstance(value, dict):
-            value = json.dumps(value)
-        return GEOSGeometry(value)
 
 
 class GeometryCoordinates(graphene.Scalar):
@@ -77,12 +49,24 @@ class GeometryCoordinates(graphene.Scalar):
             :param value:
             :return:
             """
+
+            def handle_floats(v):
+                if hasattr(v, 'values'):
+                    # Multiple floats:w
+                    return R.map(
+                        lambda fv: float(fv.value),
+                        v.values
+                    )
+                else:
+                    # Single float
+                    return float(v.value)
+
             return R.if_else(
-                    lambda v: R.isinstance(ListValue, R.head(v.values)),
-                    # ListValues
-                    lambda v: [reduce(v.values)],
-                    # FloatValues
-                    lambda v: [R.map(lambda fv: float(fv.value), v.values)]
+                lambda v: R.isinstance(ListValue, R.head(v.values) if hasattr(v, 'values') else v),
+                # ListValues
+                lambda v: [reduce(v.values)],
+                # FloatValues or single FloatValue
+                lambda v: [handle_floats(v)]
             )(value)
 
         def reduce(values):
@@ -92,7 +76,7 @@ class GeometryCoordinates(graphene.Scalar):
                 values
             )
 
-        # Create the coordinatew by reducing node.values=[node.values=[node.floats], node.value, ...]
+        # Create the coordinates by reducing node.values=[node.values=[node.floats], node.value, ...]
         return R.reduce(
             lambda accum, list_values: reduce(node.values),
             [],
@@ -109,6 +93,8 @@ class GeometryType(graphene.ObjectType):
         Graphene representation of a GeoDjango Geometry object
     """
     type = graphene.String()
+    # Coordinates can be a single lat,lon array, list of lat,lons, polygons, etc. So make this generic for full
+    # flexibility
     coordinates = GenericScalar()
 
     class Meta:

@@ -4,12 +4,12 @@ import pytest
 from rescape_python_helpers import ramda as R, ewkt_from_feature
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
-from graphene.test import Client
 from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature_collection
 
 from sample_webapp.sample_schema import schema, graphql_query_foos, Foo, graphql_update_or_create_foo
 from snapshottest import TestCase
 from rescape_graphene.schema_models.user_schema import graphql_update_or_create_user, graphql_query_users
+from sample_webapp.testcases import test_client
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class GenaralTypeCase(TestCase):
     client = None
 
     def setUp(self):
-        self.client = Client(schema)
+        self.client = test_client(schema)
         Foo.objects.all().delete()
         User.objects.all().delete()
         self.lion, _ = User.objects.update_or_create(
@@ -104,16 +104,44 @@ class GenaralTypeCase(TestCase):
             ),
             geo_collection={
                 'type': 'FeatureCollection',
-                'features': [{
-                    "type": "Feature",
-                    "geometry": {
-                        "type": "Polygon",
-                        "coordinates": [
-                            [[49.5294835476, 2.51357303225], [51.4750237087, 2.51357303225],
-                             [51.4750237087, 6.15665815596],
-                             [49.5294835476, 6.15665815596], [49.5294835476, 2.51357303225]]]
+                'generator': 'Open Street Map',
+                'copyright': '2018',
+                'features': [
+                    {
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [
+                                [[49.5294835476, 2.51357303225], [51.4750237087, 2.51357303225],
+                                 [51.4750237087, 6.15665815596],
+                                 [49.5294835476, 6.15665815596], [49.5294835476, 2.51357303225]]]
+                        },
+                    },
+                    {
+                        "type": "Feature",
+                        "id": "node/367331193",
+                        "properties": {
+                            "type": "node",
+                            "id": 367331193,
+                            "tags": {
+
+                            },
+                            "relations": [
+
+                            ],
+                            "meta": {
+
+                            }
+                        },
+                        "geometry": {
+                            "type": "Point",
+                            "coordinates": [
+                                5.7398201,
+                                58.970167
+                            ]
+                        }
                     }
-                }]
+                ]
             }
         )
         result = graphql_update_or_create_foo(self.client, values)

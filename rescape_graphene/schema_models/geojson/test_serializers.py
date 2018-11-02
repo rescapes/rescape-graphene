@@ -4,26 +4,15 @@ from django.contrib.gis import geos
 from django.test import TestCase
 from rescape_python_helpers import geometrycollection_from_feature_collection
 
-from rescape_graphene import GrapheneGeometry
 from rescape_graphene.schema_models.geojson.types import GrapheneGeometryCollection
 
 
 class TypesTests(TestCase):
 
-    def test_geometry_geojson_input(self):
-        geometry = geos.Point(1, 0)
-        geometry_type = GrapheneGeometry()
-
-        # Test Serialize
-        serialized = geometry_type.serialize(geometry)
-        self.assertEqual(geometry.geom_type, serialized['type'])
-
-        # Go backwards and parse
-        geojson_parsed = geometry_type.parse_value(serialized)
-        self.assertEqual(geojson_parsed.geojson, geometry.geojson)
-
     def test_geometry_collection_geojson_input(self):
         geojson = {
+            'copyright': '2018',
+            'generator': 'Me made it',
             'type': 'FeatureCollection',
             'features': [
                 {

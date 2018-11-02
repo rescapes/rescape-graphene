@@ -7,8 +7,6 @@ from rescape_python_helpers import geometrycollection_from_feature_collection
 
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_list, type_modify_fields
 from rescape_graphene.schema_models.geojson.types.geojson_data_schema import FeatureDataType, feature_data_type_fields
-from rescape_graphene.schema_models.geojson.resolvers import geometry_collection_resolver
-from rescape_graphene.schema_models.geojson.types import GeometryType
 
 __all__ = [
     'GrapheneGeometryCollection',
