@@ -4,7 +4,7 @@ from django.contrib.gis import geos
 from django.test import TestCase
 from rescape_python_helpers import geometrycollection_from_feature_collection
 
-from rescape_graphene.schema_models.geojson.types import GrapheneGeometryCollection
+from rescape_graphene.schema_models.geojson.types import GrapheneFeatureCollection
 
 
 class TypesTests(TestCase):
@@ -45,7 +45,7 @@ class TypesTests(TestCase):
         }
         geometry_collection = geometrycollection_from_feature_collection(geojson)
         # Test serialize
-        geometry_type = GrapheneGeometryCollection()
+        geometry_type = GrapheneFeatureCollection()
         serialized = geometry_type.serialize(geometry_collection)
         self.assertEqual(geometry_collection.geom_type, serialized['type'])
 

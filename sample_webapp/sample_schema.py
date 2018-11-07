@@ -10,10 +10,10 @@ from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature
 from rescape_graphene import increment_prop_until_unique, enforce_unique_props
 from graphql_jwt.decorators import login_required
 
-from rescape_graphene.schema_models.geojson.types.geometry_collection import GeometryCollectionType
+from rescape_graphene.schema_models.geojson.types.geometry_collection import FeatureCollectionDataType
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field, \
     type_modify_fields, resolver_for_geometry_collection
-from rescape_graphene.schema_models.geojson.types.geometry_collection import geometry_collection_fields
+from rescape_graphene.schema_models.geojson.types.geometry_collection import feature_collection_data_type_fields
 
 from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser
 from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_arguments, REQUIRE, \
@@ -74,8 +74,8 @@ class FooType(DjangoObjectType):
 # I guess there's no way to specify a resolver upon field creation, since graphene just reads the underlying
 # Django model to generate the fields
 FooType._meta.fields['data'] = Field(FooDataType, resolver=resolver('data'))
-FooType._meta.fields['geojson'] = Field(GeometryCollectionType, resolver=resolver('geojson'))
-FooType._meta.fields['geo_collection'] = Field(GeometryCollectionType,
+FooType._meta.fields['geojson'] = Field(FeatureCollectionDataType, resolver=resolver('geojson'))
+FooType._meta.fields['geo_collection'] = Field(FeatureCollectionDataType,
                                                resolver=resolver_for_geometry_collection('geo_collection'))
 
 
@@ -97,8 +97,8 @@ foo_fields = merge_with_django_properties(FooType, dict(
     user=dict(graphene_type=UserType, fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE)))),
     geojson=dict(
         create=REQUIRE,
-        graphene_type=GeometryCollectionType,
-        fields=geometry_collection_fields
+        graphene_type=FeatureCollectionDataType,
+        fields=feature_collection_data_type_fields
     ),
     # This is just geojson as GeosGeometryCollection, so it maintains the geometry but loses other geojson properties
     # It's kept synced to the geojson in the UpsertFoo mutate function. In practice this probably isn't needed
@@ -107,8 +107,8 @@ foo_fields = merge_with_django_properties(FooType, dict(
         create=DENY,
         update=DENY,
         read=IGNORE,
-        graphene_type=GeometryCollectionType,
-        fields=geometry_collection_fields,
+        graphene_type=FeatureCollectionDataType,
+        fields=feature_collection_data_type_fields,
     )
 ))
 

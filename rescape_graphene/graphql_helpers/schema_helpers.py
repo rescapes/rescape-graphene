@@ -18,7 +18,7 @@ from graphene import Scalar, InputObjectType, ObjectType
 from graphql.language import ast
 from inflection import camelize
 
-from rescape_graphene.schema_models.geojson.types import GrapheneGeometryCollection
+from rescape_graphene.schema_models.geojson.types import GrapheneFeatureCollection
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
 logger = logging.getLogger('rescape_graphene')
@@ -210,7 +210,9 @@ def django_to_graphene_type(field, field_dict_value, parent_type_classes):
         UUIDField: graphene.UUID,
         TextField: graphene.String,
         JSONField: graphene.JSONString,
-        GeometryCollectionField: GrapheneGeometryCollection
+        # I'm not sure if this is works still. We are storing geojson as a json blob, not a GeosGeometryCollection.
+        # If we do use a GeosGeometryCollection I'm not sure if this mapping works
+        GeometryCollectionField: GrapheneFeatureCollection
     }
     cls = field.__class__
     match = R.prop_or(None, cls, types)

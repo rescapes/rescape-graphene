@@ -9,14 +9,14 @@ from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dic
 from rescape_graphene.schema_models.geojson.types.geojson_data_schema import FeatureDataType, feature_data_type_fields
 
 __all__ = [
-    'GrapheneGeometryCollection',
-    'GeometryCollectionType',
+    'GrapheneFeatureCollection',
+    'FeatureCollectionDataType',
 ]
 
 
-class GrapheneGeometryCollection(graphene.Scalar):
+class GrapheneFeatureCollection(graphene.Scalar):
     """
-        Graphene representation for a GeoDjango GeometryCollectionField, which can contain the features of a geojson blob
+        Graphene representation for a GeoDjango FeatureCollection
     """
 
     class Meta:
@@ -47,7 +47,7 @@ class GrapheneGeometryCollection(graphene.Scalar):
         )
 
 
-geometry_collection_fields = dict(
+feature_collection_data_type_fields = dict(
     # type is always 'FeatureCollection'
     type=dict(type=String),
     features=dict(
@@ -60,9 +60,8 @@ geometry_collection_fields = dict(
     copyright=dict(type=String)
 )
 
-# This matches the fields of GeoDjango's GeometryCollectionField
-GeometryCollectionType = type(
-    'GeometryCollectionType',
+FeatureCollectionDataType = type(
+    'FeatureCollectionDataType',
     (graphene.ObjectType,),
-    type_modify_fields(geometry_collection_fields)
+    type_modify_fields(feature_collection_data_type_fields)
 )
