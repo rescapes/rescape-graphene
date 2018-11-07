@@ -1,5 +1,5 @@
 from .geometry import GeometryCoordinates
-from .geometry_collection import GrapheneFeatureCollection, FeatureCollectionDataType
+from .feature_collection import GrapheneFeatureCollection, FeatureCollectionDataType
 from .geojson_data_schema import feature_geometry_data_type_fields, feature_data_type_fields, FeatureGeometryDataType, FeatureDataType
 
 

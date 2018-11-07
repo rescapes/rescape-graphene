@@ -9,7 +9,6 @@ import graphene
 from graphene.types.generic import GenericScalar
 from graphql.language import ast
 
-from rescape_graphene.schema_models.geojson.resolvers import geometry_resolver
 
 __all__ = [
     'GeometryCoordinates'
@@ -86,21 +85,3 @@ class GeometryCoordinates(graphene.Scalar):
     @classmethod
     def parse_value(cls, value):
         return value
-
-
-class GeometryType(graphene.ObjectType):
-    """
-        Graphene representation of a GeoDjango Geometry object
-    """
-    type = graphene.String()
-    # Coordinates can be a single lat,lon array, list of lat,lons, polygons, etc. So make this generic for full
-    # flexibility
-    coordinates = GenericScalar()
-
-    class Meta:
-        default_resolver = geometry_resolver
-        description = """
-`GeometryObjectType` represents a pair of values:
-- Geometry `type`
-- Geometry `coordinates`
-"""

@@ -106,7 +106,7 @@ def resolver(json_field_name, resource, context):
 
 
 @R.curry
-def resolver_for_geometry_collection(json_field_name, resource, context):
+def resolver_for_feature_collection(json_field_name, resource, context):
     """
         Like resolver but takes care of converting the geos value stored in the field to a dict that
         has the values we want to resolve, namely type and features.

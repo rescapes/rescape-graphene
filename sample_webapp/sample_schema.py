@@ -10,10 +10,10 @@ from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature
 from rescape_graphene import increment_prop_until_unique, enforce_unique_props
 from graphql_jwt.decorators import login_required
 
-from rescape_graphene.schema_models.geojson.types.geometry_collection import FeatureCollectionDataType
 from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field, \
-    type_modify_fields, resolver_for_geometry_collection
-from rescape_graphene.schema_models.geojson.types.geometry_collection import feature_collection_data_type_fields
+    type_modify_fields, resolver_for_feature_collection
+from rescape_graphene.schema_models.geojson.types.feature_collection import FeatureCollectionDataType, \
+    feature_collection_data_type_fields
 
 from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser
 from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_arguments, REQUIRE, \
@@ -76,7 +76,7 @@ class FooType(DjangoObjectType):
 FooType._meta.fields['data'] = Field(FooDataType, resolver=resolver('data'))
 FooType._meta.fields['geojson'] = Field(FeatureCollectionDataType, resolver=resolver('geojson'))
 FooType._meta.fields['geo_collection'] = Field(FeatureCollectionDataType,
-                                               resolver=resolver_for_geometry_collection('geo_collection'))
+                                               resolver=resolver_for_feature_collection('geo_collection'))
 
 
 def feature_fields_in_graphql_geojson_format(args):

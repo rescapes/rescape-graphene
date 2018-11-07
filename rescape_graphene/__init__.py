@@ -55,7 +55,7 @@ from .schema_models.geojson import (
 
 from .graphql_helpers.json_field_helpers import (
     resolver,
-    resolver_for_geometry_collection,
+    resolver_for_feature_collection,
     type_modify_fields,
     pick_selections,
     resolve_selections,

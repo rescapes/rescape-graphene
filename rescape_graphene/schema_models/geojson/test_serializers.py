@@ -9,7 +9,7 @@ from rescape_graphene.schema_models.geojson.types import GrapheneFeatureCollecti
 
 class TypesTests(TestCase):
 
-    def test_geometry_collection_geojson_input(self):
+    def test_feature_collection_geojson_input(self):
         geojson = {
             'copyright': '2018',
             'generator': 'Me made it',
@@ -43,12 +43,12 @@ class TypesTests(TestCase):
                 }
             ]
         }
-        geometry_collection = geometrycollection_from_feature_collection(geojson)
+        feature_collection = geometrycollection_from_feature_collection(geojson)
         # Test serialize
         geometry_type = GrapheneFeatureCollection()
-        serialized = geometry_type.serialize(geometry_collection)
-        self.assertEqual(geometry_collection.geom_type, serialized['type'])
+        serialized = geometry_type.serialize(feature_collection)
+        self.assertEqual(feature_collection.geom_type, serialized['type'])
 
         # Go backwards and parse
         geojson_parsed = geometry_type.parse_value(serialized)
-        self.assertEqual(geojson_parsed, geometry_collection)
+        self.assertEqual(geojson_parsed, feature_collection)
