@@ -68,7 +68,7 @@ class GenaralTypeCase(TestCase):
             key="fookit", name="Fookit", user=self.cat,
             data=dict(example=9.01, friend=dict(id=self.lion.id)),
             geo_collection=ewkt_from_feature_collection(initial_geojson),
-            # Make this have no geojson
+            geojson=None
         )
 
     def test_query(self):

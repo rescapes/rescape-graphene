@@ -97,7 +97,7 @@ def resolver(json_field_name, resource, context):
     # Take the camelized keys and underscore (slugify) to get them back to python form
     selections = R.map(lambda sel: underscore(sel.name.value), context.field_asts[0].selection_set.selections)
     # This is the dict we're interested in
-    dct = R.prop(json_field_name, resource)
+    dct = R.prop_or({}, json_field_name, resource)
     # Identify the keys that are actually in the dct
     all_selections = R.filter(
         lambda key: key in dct,
