@@ -68,7 +68,7 @@ class GenaralTypeCase(TestCase):
             key="fookit", name="Fookit", user=self.cat,
             data=dict(example=9.01, friend=dict(id=self.lion.id)),
             geo_collection=ewkt_from_feature_collection(initial_geojson),
-            geojson=initial_geojson
+            # Make this have no geojson
         )
 
     def test_query(self):
@@ -78,13 +78,20 @@ class GenaralTypeCase(TestCase):
 
         # Query using for foos based on the related User
         foo_results = graphql_query_foos(self.client,
-                                         dict(user='UserTypeofFooTypeRelatedReadInputType'),
                                          variable_values=dict(user=R.pick(['id'], self.lion.__dict__))
                                          )
         assert not R.has('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
         assert 1 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'foos'], foo_results)))
         # Make sure the Django instance in the json blob was resolved
         assert str(self.cat.id) == R.item_path(['data', 'foos', 0, 'data', 'friend', 'id'], foo_results)
+
+    def test_query_foo_with_null_geojson(self):
+        # Query using for foos based on the related User
+        foo_results = graphql_query_foos(self.client,
+                                         variable_values=dict(key='fookit')
+                                         )
+        assert not R.has('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
+        assert 1 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'foos'], foo_results)))
 
     def test_create_user(self):
         values = dict(username="dino", firstName='T', lastName='Rex',

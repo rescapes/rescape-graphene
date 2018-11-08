@@ -71,4 +71,4 @@ class UpdateGroup(UpsertGroup):
 
 
 graphql_update_or_create_group = graphql_update_or_create(group_mutation_config, group_fields)
-graphql_query_groups = graphql_query('groups', group_fields)
+graphql_query_groups = graphql_query(GroupType, group_fields, 'groups')

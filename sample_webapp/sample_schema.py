@@ -165,7 +165,7 @@ class UpdateFoo(UpsertFoo):
 
 
 graphql_update_or_create_foo = graphql_update_or_create(foo_mutation_config, foo_fields)
-graphql_query_foos = graphql_query('foos', foo_fields)
+graphql_query_foos = graphql_query(FooType, foo_fields, 'foos')
 
 
 class Query(ObjectType):

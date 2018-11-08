@@ -40,7 +40,7 @@ feature_data_type_fields = dict(
     )
 )
 
-# This matches the fields of GeoDjango's GeometryCollectionField features property
+# This matches the fields of a geojson feature object
 FeatureDataType = type(
     'FeatureDataType',
     (ObjectType,),

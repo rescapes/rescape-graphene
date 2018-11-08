@@ -75,7 +75,7 @@ class UpdateUser(UpsertUser):
 
 
 graphql_update_or_create_user = graphql_update_or_create(user_mutation_config, user_fields)
-graphql_query_users = graphql_query('users', user_fields)
+graphql_query_users = graphql_query(UserType, user_fields, 'users')
 
 
 

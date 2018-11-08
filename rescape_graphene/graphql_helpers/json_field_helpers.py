@@ -47,15 +47,20 @@ def resolver_for_dict_field(resource, context):
 def resolver_for_dict_list(resource, context):
     """
         Resolver for the data field that is a list. This extracts the desired json fields from the context
-        and creates a tuple of the field values. Graphene has no built in way for querying json types
+        and creates a tuple of the field values. Graphene has no built in way for querying json types.
+        The property value must be a list or null. Null values will return null, list values will be processed
+        in turn by graphene
     :param resource:
     :param context:
     :return:
     """
-    # Take the camelized keys and underscore (slugify) to get them back to python form
     selections = resolve_selections(context)
     field_name = context.field_name
-    return R.map(lambda data: pick_selections(selections, data), getattr(resource, field_name))
+    value = R.prop_or([], field_name, resource)
+    return R.map(
+        lambda data: pick_selections(selections, data),
+        value
+    ) if value else None
 
 
 @R.curry

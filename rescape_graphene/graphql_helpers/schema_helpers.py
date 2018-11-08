@@ -462,26 +462,34 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
 
 
 @R.curry
-def graphql_query(query_name, fields):
+def graphql_query(graphene_type, fields, query_name):
     """
         Creates a query based on the name and given fields
+    :param graphene_type: The graphene type. This is used to know the type of the input fields
+    :param fields: The fields of the type. This is a dict key by field name and valued by a dict. See sample_schema.py
+    for examples
     :param query_name:
-    :param fields:
-    :returns A lambda that expects a Graphene client, optional variable_definitions, and **kwargs that contain kwargs
-    for the client.execute call, such as any of
-        context_value={'user': 'Peter'},  root_value={'user': 'Peter'}, variable_value={'user': 'Peter'}
-        variable_definitions, if specified should match the query form: e.g. dict(id='String') where the key
-        is the field and the value is the type. This results in query whatever(id: String!) { query_name(id: id) ... }
+    :returns A lambda that expects a Graphene client and **kwargs that contain kwargs for the client.execute call.
+    The only key allowed is variable_values, which contains param key values. Example: variable_values={'user': 'Peter'}
+    This results in query whatever(id: String!) { query_name(id: id) ... }
     """
+    field_type_lookup = allowed_query_arguments(fields, graphene_type)
 
-    def form_query(client, variable_definitions={}, field_overrides={}, **kwargs):
+    def form_query(client, field_overrides={}, **kwargs):
         """
         # Make definitions in the form id: String!, foo: Int!, etc
         :param client:
-        :param variable_definitions:
         :param field_overrides: Override the fields argument with limited fields in the same format as fields above
         :return:
         """
+
+        # Map the field_type_lookup to the right graphene type, either a primitive like 'String' or a complex
+        # read input type like 'FeatureCollectionDataTypeofFooTypeRelatedReadInputType'
+        variable_definitions = R.map_with_obj(
+            lambda k, v: field_type_lookup[k]._meta.name,
+            kwargs['variable_values']
+        ) if R.has('variable_values', kwargs) else {}
+
         formatted_definitions = R.join(
             ', ',
             R.values(

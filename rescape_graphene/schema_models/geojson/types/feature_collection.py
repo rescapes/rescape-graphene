@@ -60,6 +60,7 @@ feature_collection_data_type_fields = dict(
     copyright=dict(type=String)
 )
 
+# represents a geojson holding a feature collection
 FeatureCollectionDataType = type(
     'FeatureCollectionDataType',
     (graphene.ObjectType,),

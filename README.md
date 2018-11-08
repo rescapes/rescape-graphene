@@ -12,8 +12,14 @@ source ~/.virtualenvs/rescape-graphene/bin/activate
 ```
 
 #### Install requirements
+If you don't have pur installed:
+pip install pur
+
+This updates requirments.txt to their latest version
+
+Install requirements with latest versions
 ```bash
-$VIRTUAL_ENV/bin/pip install --no-cache-dir  --upgrade -r requirements.txt
+pur -r requirements.txt && $VIRTUAL_ENV/bin/pip install --no-cache-dir  --upgrade -r requirements.txt
 ```
 
 Add the following to the bottom $VIRTUAL_ENV/bin/activate to setup the PYTHONPATH.
