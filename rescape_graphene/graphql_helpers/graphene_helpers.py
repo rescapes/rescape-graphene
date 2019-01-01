@@ -143,3 +143,4 @@ def quote_list(lst, tab):
 
 def quote_str(str):
     return '"{0}"'.format(str)
+

@@ -3,6 +3,7 @@ import logging
 import sys
 from decimal import Decimal
 
+from deepmerge import Merger
 from graphql.language.printer import print_ast
 import graphene
 from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField, ForeignKey, \
@@ -17,6 +18,7 @@ from django.db.models import AutoField, CharField, BooleanField, BigAutoField, D
 from graphene import Scalar, InputObjectType, ObjectType
 from graphql.language import ast
 from inflection import camelize
+from rescape_python_helpers.functional.ramda import to_dict_deep
 
 from rescape_graphene.schema_models.geojson.types import GrapheneFeatureCollection
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
@@ -635,3 +637,27 @@ def stringify_query_kwargs(model, kwargs):
     # to take the values of R.map_with_obj and then flatten those values together and finally convert them from pairs to a dict
     return R.from_pairs(R.flatten(R.values(R.map_with_obj(lambda key, value: process_query_kwarg(model, key, value), kwargs))))
 
+
+def merge_data_fields_on_update(data_fields, existing_instance, data):
+    """
+    Merges the given data fields with the existing values in the database
+    New data gets priority, but this is a deep merge. Lists are not merged, the new data overrides
+    :param {[String]} data_fields: E.g. ['data']
+    :param {Object} existing_instance: Instance with data_fields that are dicts
+    :param {Object} data: Graphene input object from mutation
+    :return: {Object} The entire data dict with the merged values
+    """
+    return R.merge(
+        # Merge regular fields
+        R.omit(data_fields, data),
+        # with a deep merge of the new data's data fields and the existing instance's data fields
+        R.merge_deep(
+            R.pick(data_fields, existing_instance.__dict__),
+            # Strip out the Graphene objects so we can merge correctly
+            R.compose(R.map_with_obj(lambda k, v: to_dict_deep(v)), R.pick(data_fields))(data),
+            Merger([
+                (list, ["override"]),
+                (dict, ["merge"])
+            ], ["override"], ["override"])
+        )
+    )
