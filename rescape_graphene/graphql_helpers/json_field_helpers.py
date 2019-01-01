@@ -75,7 +75,6 @@ def model_resolver_for_dict_field(model_class, resource, context):
     :param context:
     :return:
     """
-    # selections = resolve_selections(context)
     field_name = underscore(context.field_name)
     # Assume for simplicity that id is among selections
     return model_class.objects.get(id=R.prop('id', getattr(resource, field_name)))
@@ -94,8 +93,8 @@ def resolver(json_field_name, resource, context):
     :return: {DataTuple} Standard resolver return value
     """
 
-    # Take the camelized keys and underscore (slugify) to get them back to python form
-    selections = R.map(lambda sel: underscore(sel.name.value), context.field_asts[0].selection_set.selections)
+    # Take the camelized keys. We don't slugify because we expect data fields ot be camelcase
+    selections = R.map(lambda sel: sel.name.value, context.field_asts[0].selection_set.selections)
     # This is the dict we're interested in
     dct = R.prop_or({}, json_field_name, resource)
     # Identify the keys that are actually in the dct
@@ -121,8 +120,8 @@ def resolver_for_feature_collection(json_field_name, resource, context):
     :return: {DataTuple} Standard resolver return value
     """
 
-    # Take the camelized keys and underscore (slugify) to get them back to python form
-    selections = R.map(lambda sel: underscore(sel.name.value), context.field_asts[0].selection_set.selections)
+    # Take the camelized keys. We don't store data fields slugified. We leave them camelized
+    selections = R.map(lambda sel: sel.name.value, context.field_asts[0].selection_set.selections)
     # Recover the json by parsing the string provided by GeometryCollection and mapping the geometries property to features
     json = R.compose(
         # Map the value GeometryCollection to FeatureCollection for the type property
