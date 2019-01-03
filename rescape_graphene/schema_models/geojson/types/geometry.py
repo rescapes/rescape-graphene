@@ -1,13 +1,6 @@
-import json
-import pickle
-
 from graphql.language.ast import ListValue
 from rescape_python_helpers import ramda as R
-from django.contrib.gis.geos import GEOSGeometry
-
 import graphene
-from graphene.types.generic import GenericScalar
-from graphql.language import ast
 
 
 __all__ = [
@@ -22,10 +15,8 @@ class GeometryCoordinates(graphene.Scalar):
 
     class Meta:
         description = """
-`Geometry` scalar may be represented in a few ways:
-- Well-known text (WKT)
-- Hexadecimal (HEX)
-- GeoJSON
+Coordinates respresent a Point, LineString, Polygon, Multipolygon, etc features of a blob. It thus supports
+and arbitrary number of embedded arrays with endpoints being Floats to represent coordinates
 """
 
     @classmethod

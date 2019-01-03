@@ -40,8 +40,8 @@ def resolver_for_dict_field(resource, context):
     """
     selections = resolve_selections(context)
     field_name = context.field_name
-    # Pick the selections from our resource json field value
-    return pick_selections(selections, getattr(resource, field_name))
+    # Pick the selections from our resource json field value default to {} if resource[field_name] is null
+    return pick_selections(selections, getattr(resource, field_name) if hasattr(resource, field_name) else {})
 
 
 def resolver_for_dict_list(resource, context):
