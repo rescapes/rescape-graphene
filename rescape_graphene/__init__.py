@@ -16,12 +16,12 @@ from .graphql_helpers.schema_helpers import (
     merge_data_fields_on_update,
     DENY,
     CREATE,
+    UPDATE,
     UNIQUE,
     ALLOW,
     DELETE,
     REQUIRE,
-    READ,
-    PRIMARY
+    READ
 )
 
 from .django_helpers.write_helpers import (
