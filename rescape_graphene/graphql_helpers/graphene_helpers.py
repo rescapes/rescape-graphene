@@ -32,10 +32,16 @@ def dump_graphql_keys(dct):
     :param dct: keyed by field
     :return:
     """
-    from rescape_graphene.graphql_helpers.schema_helpers import IGNORE
+    from rescape_graphene.graphql_helpers.schema_helpers import IGNORE, DENY
     return R.join('\n', R.values(R.map_with_obj(
         dump_graphene_type,
-        R.filter_dict(lambda key_value: R.not_func(R.prop_eq('read', IGNORE, key_value[1])), dct)
+        R.filter_dict(
+            lambda key_value: not R.compose(
+                lambda v: R.contains(v, [IGNORE, DENY]),
+                lambda v: R.prop_or(None, 'read', v)
+            )(key_value[1]),
+            dct
+        )
     )))
 
 

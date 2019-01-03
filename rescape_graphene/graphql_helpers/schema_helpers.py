@@ -20,7 +20,6 @@ from graphql.language import ast
 from inflection import camelize
 from rescape_python_helpers.functional.ramda import to_dict_deep
 
-from rescape_graphene.schema_models.geojson.types import GrapheneFeatureCollection
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
 logger = logging.getLogger('rescape_graphene')
@@ -124,19 +123,30 @@ def input_type_class(field_dict_value, crud, parent_type_classes=[]):
             R.join('of', R.concat([''], modified_parent_type_classes)),
             camelize(crud, True)),
         (InputObjectType,),
+        # RECURSION
         # Create Graphene types for the InputType based on the field_dict_value.fields
         # This will typically just be an id field to reference an existing object.
-        # If the graphene type is based on a Django model, the Django model fields are merged with it,
-        # otherwise it's assumed that field_dict_value['fields'] are independent of a Django model and
-        # each have their own type property
-        # It could be used to create a dependent object, for instance creating a UserPreference instance
-        # on a User instance
+        # If the graphene type is based on a Django model and this is and update/create crud construction,
+        # we want to limit the fields to the id. We never want a mutation to be able to modify a Django object
+        # referenced in json data. We only want the mutation to be allowed to specify the id to reference an existing
+        # Django object.
+        #
+        # Otherwise field_dict_value['fields'] are independent of a Django model and each have their own type property
         input_type_fields(
             merge_with_django_properties(
                 graphene_class,
-                field_dict_value['fields']
-            ) if hasattr(graphene_class._meta, 'model') else
-            field_dict_value['fields'],
+                R.compose(
+                    # Remove the update and create constraints,
+                    # which would normally disallow using id in create and require using it in update
+                    # We're not creating this model instance, we're just referencing it
+                    # TODO We could add some other field flag that specifies whether the container needs to reference it or not
+                    # such as referenced_in_create = REQUIRE, if the container has to have a reference when the
+                    # container is created
+                    R.map_with_obj(lambda key, value: R.omit(['create', 'update'], value)),
+                    # Only take the id
+                    R.pick(['id'])
+                )(field_dict_value['fields']) if crud in [CREATE, UPDATE] else field_dict_value['fields']
+            ) if django_model_of_graphene_type(graphene_class) else field_dict_value['fields'],
             crud,
             # Keep our naming unique by appending parent classes, ordered newest to oldest
             R.concat([graphene_class], modified_parent_type_classes)
@@ -194,6 +204,7 @@ def django_to_graphene_type(field, field_dict_value, parent_type_classes):
         # the other graphene types above
         return related_input_field_for_crud_type(field_dict_value, parent_type_classes)
 
+    from rescape_graphene.schema_models.geojson.types import GrapheneFeatureCollection
     types = {
         AutoField: graphene.Int,
         IntegerField: graphene.Int,
@@ -292,6 +303,13 @@ def parse_django_class(model, field_dict, parent_type_classes=[]):
         )
     ))
 
+def django_model_of_graphene_type(graphene_type):
+    """
+        Returns the Django model underlying the Graphene type, if any
+    :param graphene_type: Graphene ObjectType subclass
+    :return: The Django model type or None
+    """
+    return R.item_str_path_or(None, '_meta.model', graphene_type)
 
 def merge_with_django_properties(graphene_type, field_dict):
     """
@@ -306,13 +324,16 @@ def merge_with_django_properties(graphene_type, field_dict):
         field_dict,
         R.pick(
             R.keys(field_dict),
-            parse_django_class(graphene_type._meta.model, field_dict, graphene_type))
+            parse_django_class(django_model_of_graphene_type(graphene_type), field_dict, graphene_type))
     )
 
 
-def allowed_query_arguments(fields_dict, graphene_type):
+def allowed_query_and_read_arguments(fields_dict, graphene_type):
     """
-        Returns fields that can be queried
+        Returns fields that can be queried and returned.
+        Querying meaning foo: 1, etc. and returned meaning what fields are returned
+        For now these are the same. It might make sense to prevent some query arguments for efficiency,
+        or it might be possible to use extended query arguments. We'll deal with that later
     :param fields_dict: The fields_dict for the Django model
     :param graphen_type: Type used for emboded input class naming
     :return:
@@ -332,12 +353,8 @@ def allowed_query_arguments(fields_dict, graphene_type):
         R.map_dict(resolve_type),
         R.filter_dict(
             lambda key_value:
-            # Only; accept Scalars. We don't need Relations because they are done automatically by graphene
-            # Correction, do include Relations. Graphene does not add these in for us. It's up to us to allow
-            # all relations as query variables.
-            # Don't allow DENYed READs
+            # Don't allow DENYed READ fields to be used for querying
             R.and_func(
-                # not R.prop_or(False, 'django_type', key_value[1]),
                 True,
                 R.not_func(R.prop_eq_or_in(READ, DENY, key_value[1]))
             )
@@ -375,16 +392,19 @@ def instantiate_graphene_type(value, parent_type_classes, crud):
                         " Django field, you must give the field a type parameter that is set to a GraphneType subclass")
     graphene_type_modifier = R.prop_or(None, 'type_modifier', value)
     if inspect.isclass(graphene_type) and issubclass(graphene_type, (ObjectType)):
-        # Geometry and ObjectTypes must be converted to a dynamic InputTypeVersion
+        # ObjectTypes must be converted to a dynamic InputTypeVersion
         fields = R.prop('fields', value)
         resolved_graphene_type = input_type_class(dict(graphene_type=graphene_type, fields=fields), crud,
                                                   parent_type_classes)
-    else:
+    elif R.isfunction(graphene_type):
         # If a lambda is returned we have an InputType subclass that needs to know the crud type
-        resolved_graphene_type = graphene_type(crud) if R.isfunction(graphene_type) else graphene_type
+        resolved_graphene_type = graphene_type(crud)
+    else:
+        # Otherwise we have a simple type
+        resolved_graphene_type = graphene_type
 
-    # Instantiate using the type_modifier function if we need to wrap this in a List,
-    # Otherwise instantiate and pass the required flat
+    # Instantiate using the type_modifier function if we need to wrap this in a List and/or give it a resolver,
+    # Otherwise instantiate and pass the required flag
     return graphene_type_modifier(resolved_graphene_type) if \
         graphene_type_modifier else \
         resolved_graphene_type(
@@ -396,7 +416,7 @@ def instantiate_graphene_type(value, parent_type_classes, crud):
 
 def input_type_fields(fields_dict, crud, parent_type_classes=[]):
     """
-    :param fields_dict: The fields_dict for the Django model
+    :param fields_dict: The fields_dict for the Django model or json data
     :param crud: INSERT, UPDATE, or DELETE. If None the type is guessed
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :return:
@@ -475,7 +495,7 @@ def graphql_query(graphene_type, fields, query_name):
     The only key allowed is variable_values, which contains param key values. Example: variable_values={'user': 'Peter'}
     This results in query whatever(id: String!) { query_name(id: id) ... }
     """
-    field_type_lookup = allowed_query_arguments(fields, graphene_type)
+    field_type_lookup = allowed_query_and_read_arguments(fields, graphene_type)
 
     def form_query(client, field_overrides={}, **kwargs):
         """

@@ -54,7 +54,7 @@ feature_collection_data_type_fields = dict(
         type=FeatureDataType,
         graphene_type=FeatureDataType,
         fields=feature_data_type_fields,
-        type_modifier=lambda typ: List(typ, resolver=resolver_for_dict_list)
+        type_modifier=lambda *type_and_args: List(*type_and_args, resolver=resolver_for_dict_list)
     ),
     generator=dict(type=String),
     copyright=dict(type=String)

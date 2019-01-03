@@ -3,11 +3,11 @@ from collections import namedtuple
 from rescape_python_helpers import ramda as R
 from inflection import underscore
 
-
 ###
 # Helpers for json fields. json fields are not a Django model,
 # rather a json blob that is the field data of the Region and Resource models
 ###
+from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_and_read_arguments
 
 
 def resolve_selections(context):
@@ -30,28 +30,35 @@ def pick_selections(selections, data):
     return namedtuple('DataTuple', R.keys(dct))(*R.values(dct))
 
 
-def resolver_for_dict_field(resource, context):
+def resolver_for_dict_field(resource, context, **kwargs):
     """
         Resolver for the data field. This extracts the desired json fields from the context
-        and creates a tuple of the field values. Graphene has no built in way for querying json types
+        and creates a tuple of the field values. Graphene has no built in way for drilling into json types
     :param resource:
     :param context:
+    :params kwargs: Arguments to filter with
     :return:
     """
     selections = resolve_selections(context)
     field_name = context.field_name
+    # We only let this value through if it matches the kwargs
+    R.map_deep
     # Pick the selections from our resource json field value default to {} if resource[field_name] is null
-    return pick_selections(selections, getattr(resource, field_name) if hasattr(resource, field_name) else {})
+    return pick_selections(selections,
+                           getattr(resource, field_name) if
+                           (hasattr(resource, field_name) and R.prop(field_name, resource)) else
+                           {})
 
 
-def resolver_for_dict_list(resource, context):
+def resolver_for_dict_list(resource, context, **kwargs):
     """
         Resolver for the data field that is a list. This extracts the desired json fields from the context
-        and creates a tuple of the field values. Graphene has no built in way for querying json types.
+        and creates a tuple of the field values. Graphene has no built in way for drilling into json types.
         The property value must be a list or null. Null values will return null, list values will be processed
         in turn by graphene
     :param resource:
     :param context:
+    :params kwargs: Arguments to filter with
     :return:
     """
     selections = resolve_selections(context)
@@ -63,58 +70,30 @@ def resolver_for_dict_list(resource, context):
     ) if value else None
 
 
-@R.curry
-def model_resolver_for_dict_field(model_class, resource, context):
+def model_resolver_for_dict_field(model_class):
     """
         Resolves a Django model referenced in a data field. This extracts the desired json fields from the context
-        and creates a tuple of the field values. Graphene has no built in way for querying json types
+        and creates a tuple of the field values. Graphene has no built in way for drilling into json types
         TODO this naively assumes that the 'id' property is among the query selections and uses that
         to resolve the instance
     :param model_class:
     :param resource:
     :param context:
+    :params kwargs: Arguments to filter with
     :return:
     """
-    field_name = underscore(context.field_name)
-    # Assume for simplicity that id is among selections
-    return model_class.objects.get(id=R.prop('id', getattr(resource, field_name)))
+
+    def _model_resolver_for_dict_field(resource, context, **kwargs):
+        field_name = underscore(context.field_name)
+        # Assume for simplicity that id is among selections
+        return model_class.objects.get(id=R.prop('id', getattr(resource, field_name)))
+    return _model_resolver_for_dict_field
 
 
-@R.curry
-def resolver(json_field_name, resource, context):
-    """
-        Resolver for a data field on a Django model. Note the difference from model_resolver_for_dict_field,
-        which goes the other direction and finds a django instance referenced within a data field blob.
-        This extracts the desired json fields from the context and creates a tuple of the field values.
-        Graphene has no built in way for querying json types.
-    :param {string} json_field_name: Name of the field on the resource that is the json field (such as 'data')
-    :param {string} resource: The instance whose json field data is being resolved
-    :param {ResolveInfo} context: Graphene context which contains the fields queried in field_asts
-    :return: {DataTuple} Standard resolver return value
-    """
-
-    # Take the camelized keys. We don't slugify because we expect data fields ot be camelcase
-    selections = R.map(lambda sel: sel.name.value, context.field_asts[0].selection_set.selections)
-    # This is the dict we're interested in
-    dct = R.prop_or({}, json_field_name, resource)
-    # Identify the keys that are actually in the dct
-    all_selections = R.filter(
-        lambda key: key in dct,
-        selections
-    )
-    # Pick out the values that we want
-    result = R.pick(all_selections, dct)
-
-    # Return in the standard Graphene DataTuple
-    return namedtuple('DataTuple', R.keys(result))(*R.values(result))
-
-
-@R.curry
-def resolver_for_feature_collection(json_field_name, resource, context):
+def resolver_for_feature_collection(resource, context, **kwargs):
     """
         Like resolver but takes care of converting the geos value stored in the field to a dict that
         has the values we want to resolve, namely type and features.
-    :param {string} json_field_name: Name of the field on the resource that is the json field (such as 'data')
     :param {string} resource: The instance whose json field data is being resolved
     :param {ResolveInfo} context: Graphene context which contains the fields queried in field_asts
     :return: {DataTuple} Standard resolver return value
@@ -140,7 +119,7 @@ def resolver_for_feature_collection(json_field_name, resource, context):
                 R.prop_or([], 'geometries', dct))
             )
         ),
-    )(ast.literal_eval(R.prop(json_field_name, resource).json))
+    )(ast.literal_eval(R.prop(context.field_name, resource).json))
     # Identify the keys that are actually in resource[json_field_name]
     all_selections = R.filter(
         lambda key: key in json,
@@ -165,7 +144,7 @@ def type_modify_fields(data_field_configs):
             type=UserType,
             graphene_type=UserType,
             fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE))),
-            type_modifier=lambda typ: Field(typ, resolver=model_resolver_for_dict_field(get_user_model()))
+            type_modifier=lambda *type_and_args: Field(*type_and_args, resolver=model_resolver_for_dict_field(get_user_model()))
         ),
         # This is a field that points to a json dict modeled in graphene with ViewportDataType, so it
         resolves to Field(UserRegionDataType) with a resolver that handles a dict
@@ -173,7 +152,7 @@ def type_modify_fields(data_field_configs):
             type=ViewportDataType,
             graphene_type=ViewportDataType,
             fields=viewport_data_fields,
-            type_modifier=lambda typ: Field(typ, resolver=resolver_for_dict_field),
+            type_modifier=lambda *type_and_args: Field(*type_and_args, resolver=resolver_for_dict_field),
         )
         # This is a field that points to a json list of dicts, each modeled in graphene with UserRegionDataType, so it
         resolves to List(UserRegionDataType) with a resolver that handles lists of dicts
@@ -188,7 +167,16 @@ def type_modify_fields(data_field_configs):
     a type_modifier then it is called with field_config['type'] and its result is returned. Otherwise
     we simply call field_config['type']() to construct an instance of the type
     """
+
+    def apply_type(v):
+        fields = allowed_query_and_read_arguments(R.prop('fields', v), R.prop('graphene_type', v)) if \
+            R.has('fields', v) else None
+
+        args = [R.prop('type', v)] + ([fields] if fields else [])
+        return R.prop_or(lambda typ: typ(), 'type_modifier', v)(*args)
+
     return R.map_with_obj(
         # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
-        lambda k, v: R.prop_or(lambda typ: typ(), 'type_modifier', v)(R.prop('type', v)),
+        # This all translates to Graphene.Field|List(type, [fields that can be queried])
+        lambda k, v: apply_type(v),
         data_field_configs)

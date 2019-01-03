@@ -32,7 +32,7 @@ feature_data_type_fields = dict(
         type=FeatureGeometryDataType,
         graphene_type=FeatureGeometryDataType,
         fields=feature_geometry_data_type_fields,
-        type_modifier=lambda typ: Field(typ, resolver=resolver_for_dict_field),
+        type_modifier=lambda *type_and_args: Field(*type_and_args, resolver=resolver_for_dict_field),
     ),
     # Arbitrary geojson properties for the Feature
     properties=dict(

@@ -10,13 +10,13 @@ from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature
 from rescape_graphene import increment_prop_until_unique, enforce_unique_props
 from graphql_jwt.decorators import login_required
 
-from rescape_graphene.graphql_helpers.json_field_helpers import resolver, model_resolver_for_dict_field, \
-    type_modify_fields, resolver_for_feature_collection
+from rescape_graphene.graphql_helpers.json_field_helpers import model_resolver_for_dict_field, \
+    type_modify_fields, resolver_for_feature_collection, resolver_for_dict_field
 from rescape_graphene.schema_models.geojson.types.feature_collection import FeatureCollectionDataType, \
     feature_collection_data_type_fields
 
 from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser
-from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_arguments, REQUIRE, \
+from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_and_read_arguments, REQUIRE, \
     merge_with_django_properties, guess_update_or_create, \
     CREATE, UPDATE, input_type_parameters_for_update_or_create, graphql_update_or_create, graphql_query, \
     input_type_fields, DENY, stringify_query_kwargs, IGNORE
@@ -47,8 +47,9 @@ foo_data_fields = dict(
     friend=dict(
         type=UserType,
         graphene_type=UserType,
-        fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE))),
-        type_modifier=lambda typ: Field(typ, resolver=model_resolver_for_dict_field(get_user_model()))
+        fields=user_fields,
+        type_modifier=lambda *type_and_args: Field(*type_and_args,
+                                                   resolver=model_resolver_for_dict_field(get_user_model()))
     )
 )
 
@@ -71,12 +72,23 @@ class FooType(DjangoObjectType):
 
 
 # Modify data field to use the resolver.
-# I guess there's no way to specify a resolver upon field creation, since graphene just reads the underlying
-# Django model to generate the fields
-FooType._meta.fields['data'] = Field(FooDataType, resolver=resolver('data'))
-FooType._meta.fields['geojson'] = Field(FeatureCollectionDataType, resolver=resolver('geojson'))
-FooType._meta.fields['geo_collection'] = Field(FeatureCollectionDataType,
-                                               resolver=resolver_for_feature_collection('geo_collection'))
+# There's no way to specify a resolver and queryable fields upon field creation,
+# since graphene just reads the underlying. Django model to generate the fields
+FooType._meta.fields['data'] = Field(
+    FooDataType,
+    allowed_query_and_read_arguments(foo_data_fields, FooDataType),
+    resolver=resolver_for_dict_field
+)
+FooType._meta.fields['geojson'] = Field(
+    FeatureCollectionDataType,
+    allowed_query_and_read_arguments(feature_collection_data_type_fields, FeatureCollectionDataType),
+    resolver=resolver_for_dict_field
+)
+FooType._meta.fields['geo_collection'] = Field(
+    FeatureCollectionDataType,
+    allowed_query_and_read_arguments(feature_collection_data_type_fields, FeatureCollectionDataType),
+    resolver=resolver_for_feature_collection
+)
 
 
 def feature_fields_in_graphql_geojson_format(args):
@@ -90,11 +102,9 @@ foo_fields = merge_with_django_properties(FooType, dict(
     updated_at=dict(),
     # This refers to the FooDataType, which is a representation of all the json fields of Foo.data
     data=dict(graphene_type=FooDataType, fields=foo_data_fields, default=lambda: dict()),
-    # This is a Foreign Key. Graphene generates these relationships for us, but we need it here to
-    # support our Mutation subclasses below
-    # For simplicity we limit fields to id. Mutations can only us id, and a query doesn't need other
-    # details of the user--it can query separately for that
-    user=dict(graphene_type=UserType, fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE)))),
+    # This is a reference to a Django model instance.
+    # We have to add id to the fields since Django
+    user=dict(graphene_type=UserType, fields=user_fields),
     geojson=dict(
         create=REQUIRE,
         graphene_type=FeatureCollectionDataType,
@@ -172,19 +182,19 @@ class Query(ObjectType):
     debug = graphene.Field(DjangoDebug, name='__debug')
     users = graphene.List(
         UserType,
-        **allowed_query_arguments(user_fields, UserType)
+        **allowed_query_and_read_arguments(user_fields, UserType)
     )
     user = graphene.Field(
         UserType,
-        **allowed_query_arguments(user_fields, UserType)
+        **allowed_query_and_read_arguments(user_fields, UserType)
     )
     foos = graphene.List(
         FooType,
-        **allowed_query_arguments(foo_fields, FooType)
+        **allowed_query_and_read_arguments(foo_fields, FooType)
     )
     foo = graphene.Field(
         FooType,
-        **allowed_query_arguments(foo_fields, FooType)
+        **allowed_query_and_read_arguments(foo_fields, FooType)
     )
 
     @login_required

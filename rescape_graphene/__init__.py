@@ -6,7 +6,7 @@ from .graphql_helpers.schema_helpers import (
     process_field,
     parse_django_class,
     merge_with_django_properties,
-    allowed_query_arguments,
+    allowed_query_and_read_arguments,
     guess_update_or_create,
     instantiate_graphene_type,
     input_type_fields,
@@ -62,7 +62,6 @@ from .schema_models.geojson import (
 )
 
 from .graphql_helpers.json_field_helpers import (
-    resolver,
     resolver_for_feature_collection,
     type_modify_fields,
     pick_selections,
