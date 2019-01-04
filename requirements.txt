@@ -1,4 +1,5 @@
 django==2.0.7
+django-filter==2.0.0
 pyramda==0.1
 graphene==2.1.3
 graphene-django==2.2.0

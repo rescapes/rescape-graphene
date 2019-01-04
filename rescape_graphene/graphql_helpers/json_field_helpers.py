@@ -1,5 +1,7 @@
 import ast
 from collections import namedtuple
+
+from more_itertools import first
 from rescape_python_helpers import ramda as R
 from inflection import underscore
 
@@ -19,7 +21,7 @@ def resolve_selections(context):
     return R.map(lambda sel: sel.name.value, context.field_asts[0].selection_set.selections)
 
 
-def pick_selections(selections, data, params):
+def pick_selections(selections, data):
     """
         Pick the selections from the current data
     :param {[Sting]} selections: The field names to that are in the query
@@ -97,10 +99,10 @@ def model_resolver_for_dict_field(model_class):
     def _model_resolver_for_dict_field(resource, context, **kwargs):
         field_name = underscore(context.field_name)
         # Assume for simplicity that id is among selections
-        return model_class.objects.filter(
+        return first(model_class.objects.filter(
             id=R.prop('id', getattr(resource, field_name)),
             **stringify_query_kwargs(model_class, kwargs)
-        )
+        ))
 
     return _model_resolver_for_dict_field
 

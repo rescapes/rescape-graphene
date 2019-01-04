@@ -103,7 +103,6 @@ foo_fields = merge_with_django_properties(FooType, dict(
     # This refers to the FooDataType, which is a representation of all the json fields of Foo.data
     data=dict(graphene_type=FooDataType, fields=foo_data_fields, default=lambda: dict()),
     # This is a reference to a Django model instance.
-    # We have to add id to the fields since Django
     user=dict(graphene_type=UserType, fields=user_fields),
     geojson=dict(
         create=REQUIRE,
