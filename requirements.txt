@@ -17,7 +17,7 @@ twine==1.12.1
 utils==0.9.0
 simplejson==3.16.0
 jsonfield===2.0.2
-rescape-python-helpers==0.0.15
+rescape-python-helpers==0.0.17
 pytest==4.0.2
 pytest-cov==2.6.0
 pytest-django==3.4.4

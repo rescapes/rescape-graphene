@@ -7,7 +7,7 @@ from inflection import underscore
 # Helpers for json fields. json fields are not a Django model,
 # rather a json blob that is the field data of the Region and Resource models
 ###
-from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_and_read_arguments
+from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_and_read_arguments, stringify_query_kwargs
 
 
 def resolve_selections(context):
@@ -19,7 +19,7 @@ def resolve_selections(context):
     return R.map(lambda sel: sel.name.value, context.field_asts[0].selection_set.selections)
 
 
-def pick_selections(selections, data):
+def pick_selections(selections, data, params):
     """
         Pick the selections from the current data
     :param {[Sting]} selections: The field names to that are in the query
@@ -41,13 +41,14 @@ def resolver_for_dict_field(resource, context, **kwargs):
     """
     selections = resolve_selections(context)
     field_name = context.field_name
+    data = getattr(resource, field_name) if (hasattr(resource, field_name) and R.prop(field_name, resource)) else {}
     # We only let this value through if it matches the kwargs
-    R.map_deep
+    # TODO data doesn't include full values for embedded model values, rather just {id: ...}. So if kwargs have
+    # searches on other values of the model this will fail. The solution is to load the model values, but I
+    # need some way to figure out where they are in data
+    passes = R.dict_matches_params_deep(kwargs, data)
     # Pick the selections from our resource json field value default to {} if resource[field_name] is null
-    return pick_selections(selections,
-                           getattr(resource, field_name) if
-                           (hasattr(resource, field_name) and R.prop(field_name, resource)) else
-                           {})
+    return pick_selections(selections, data) if passes else namedtuple('DataTuple', [])()
 
 
 def resolver_for_dict_list(resource, context, **kwargs):
@@ -64,9 +65,17 @@ def resolver_for_dict_list(resource, context, **kwargs):
     selections = resolve_selections(context)
     field_name = context.field_name
     value = R.prop_or([], field_name, resource)
+
     return R.map(
         lambda data: pick_selections(selections, data),
-        value
+        R.filter(
+            # We only let this value through if it matches the kwargs
+            # TODO data doesn't include full values for embedded model values, rather just {id: ...}. So if kwargs have
+            # searches on other values of the model this will fail. The solution is to load the model values, but I
+            # need some way to figure out where they are in data
+            lambda data: R.dict_matches_params_deep(kwargs, data),
+            value
+        )
     ) if value else None
 
 
@@ -83,10 +92,16 @@ def model_resolver_for_dict_field(model_class):
     :return:
     """
 
+    from rescape_graphene.graphql_helpers.schema_helpers import stringify_query_kwargs
+
     def _model_resolver_for_dict_field(resource, context, **kwargs):
         field_name = underscore(context.field_name)
         # Assume for simplicity that id is among selections
-        return model_class.objects.get(id=R.prop('id', getattr(resource, field_name)))
+        return model_class.objects.filter(
+            id=R.prop('id', getattr(resource, field_name)),
+            **stringify_query_kwargs(model_class, kwargs)
+        )
+
     return _model_resolver_for_dict_field
 
 
