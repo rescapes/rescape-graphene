@@ -179,6 +179,12 @@ graphql_query_foos = graphql_query(FooType, foo_fields, 'foos')
 
 class Query(ObjectType):
     debug = graphene.Field(DjangoDebug, name='__debug')
+
+    current_user = graphene.Field(
+        UserType,
+        **allowed_query_and_read_arguments(user_fields, UserType)
+    )
+
     users = graphene.List(
         UserType,
         **allowed_query_and_read_arguments(user_fields, UserType)

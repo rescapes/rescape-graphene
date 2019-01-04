@@ -1,0 +1,50 @@
+{% block content %}
+{% load widget_tweaks %}
+
+<link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"/>
+<link rel="stylesheet" type="text/css" href="/static/pages/login.scss" />
+<link rel="stylesheet" type="text/css" href="/static/helpers/_utilities.scss" />
+
+<div class="login-wrapper">
+    <div class="login col-md-4 col-md-offset-4">
+        <div class="login__logo text-center m-t-2">
+            <img src="/static/sop_logo_150.png">
+        </div>
+        <div class="col-md-12">
+            <form method="post" action="{% url 'login' %}">
+                {% csrf_token %}
+                <h3 class="text-center m-b-2"><strong class="login-title">Log in to your State of Place account</strong></h3>
+                <div class="form-group">
+                    {% render_field form.username class="form-control" placeholder="Username"%}
+                </div>
+                <div class="form-group">
+                    {% render_field form.password class="form-control" placeholder="Password"%}
+                </div>
+                <div class="form-group text-right text-center">
+                    <button type="submit" class="btn btn-sop-submit m-t-1" value="login">LOGIN</button>
+                    <input type="hidden" name="next" value="{{ next }}" />
+                </div>
+                <div class="text-right text-center m-b-2 m-t-1">
+                    <a class="text-center" href="{% url 'password_reset' %}">Forgot your password?</a>
+                </div>
+            </form>
+                {% if form.errors %}
+                <p>Your username and password didn't match. Please try again.</p>
+                {% endif %}
+        </div>
+    </div>
+    <div class="text-right text-center m-b-2 m-t-1">
+        <p class="white-text">
+            Don’t have an account?
+            <a class="text-center" href="/signup/"> Get started.</a>
+        </p>
+    </div>
+
+</div>
+{% endblock %}
+
+
+
+
+
+

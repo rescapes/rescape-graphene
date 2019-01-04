@@ -6,6 +6,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature_collection
 
+from rescape_graphene.graphql_helpers.schema_helpers import grapqhl_authorization_mutation
 from sample_webapp.sample_schema import schema, graphql_query_foos, Foo, graphql_update_or_create_foo
 from snapshottest import TestCase
 from rescape_graphene.schema_models.user_schema import graphql_update_or_create_user, graphql_query_users
@@ -70,6 +71,11 @@ class GenaralTypeCase(TestCase):
             geo_collection=ewkt_from_feature_collection(initial_geojson),
             geojson=None
         )
+
+    # We need to mock a Resuest in the test client for this to work
+    #def test_auth(self):
+    #    authorization = grapqhl_authorization_mutation(self.client, dict(username='test', password='testpass'))
+    #    assert authorization
 
     def test_query(self):
         user_results = graphql_query_users(self.client)

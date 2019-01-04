@@ -13,6 +13,7 @@ from rest_framework_jwt.authentication import JSONWebTokenAuthentication
 from graphene_django.views import GraphQLView
 import simplejson as json
 
+
 def encode_code(code):
     if code is None:
         return None
@@ -80,8 +81,12 @@ class JWTGraphQLView(JSONWebTokenAuthentication, SafeGraphQLView):
         try:
             # if not already authenticated by django cookie sessions
             # check the JWT token by re-using our DRF JWT
-            if not request.user.is_authenticated:
-                request.user, request.token = self.authenticate(request)
+            if not hasattr(request, 'user') or not request.user.is_authenticated:
+                result = self.authenticate(request)
+                if result:
+                    request.user, request.token = result
+                else:
+                    raise exceptions.AuthenticationFailed("No website or token authentication found")
         except exceptions.AuthenticationFailed as e:
             response = HttpResponse(
                 json.dumps({
@@ -91,4 +96,4 @@ class JWTGraphQLView(JSONWebTokenAuthentication, SafeGraphQLView):
                 content_type='application/json'
             )
             return response
-        return super(JWTGraphQLView, self).dispatch(request, *args, **kwargs)
+        return super().dispatch(request, *args, **kwargs)

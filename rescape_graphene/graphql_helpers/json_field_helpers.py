@@ -98,11 +98,18 @@ def model_resolver_for_dict_field(model_class):
 
     def _model_resolver_for_dict_field(resource, context, **kwargs):
         field_name = underscore(context.field_name)
-        # Assume for simplicity that id is among selections
+        id = R.prop_or(None, 'id', getattr(resource, field_name))
+        # If no instance id is assigned to this data, we can't resolve it
+        if not id:
+            return None
+
+        # Now filter based on any query arguments beyond id. If it doesn't match we also return None
         return first(model_class.objects.filter(
-            id=R.prop('id', getattr(resource, field_name)),
-            **stringify_query_kwargs(model_class, kwargs)
-        ))
+            **dict(
+                id=id,
+                **stringify_query_kwargs(model_class, kwargs)
+            )
+        ), None)
 
     return _model_resolver_for_dict_field
 

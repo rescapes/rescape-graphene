@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/1.9/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.9/ref/settings/
 """
-
+import datetime
 import os
 
 TEST_RUNNER = 'snapshottest.django.TestRunner'
@@ -42,6 +42,21 @@ INSTALLED_APPS = [
 STATIC_URL = '/static/'
 STATIC_ROOT = 'staticfiles'
 CORS_ORIGIN_ALLOW_ALL = True
+
+MIDDLEWARE = [
+    # This seems to ignore csrf_exempt, which makes no sense
+    # Better is to use csrf_protect since this thing is obviously defective
+    # 'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.security.SecurityMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # After django.contrib.auth.middleware.AuthenticationMiddleware...
+    'graphql_jwt.middleware.JSONWebTokenMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+]
 
 MIDDLEWARE_CLASSES = [
     'django.middleware.security.SecurityMiddleware',
@@ -207,7 +222,6 @@ LOGGING = {
     },
 }
 
-
 AUTHENTICATION_BACKENDS = [
     'graphql_jwt.backends.JSONWebTokenBackend',
     'django.contrib.auth.backends.ModelBackend',
@@ -218,4 +232,9 @@ GRAPHENE = {
     'MIDDLEWARE': [
         'graphene_django.debug.DjangoDebugMiddleware',
     ]
+}
+
+JWT_AUTH = {
+    'JWT_ALLOW_REFRESH': True,
+    'JWT_REFRESH_EXPIRATION_DELTA': datetime.timedelta(days=7)
 }
