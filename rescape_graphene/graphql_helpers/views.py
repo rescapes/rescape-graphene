@@ -72,28 +72,3 @@ class SafeGraphQLView(GraphQLView):
                 return format_graphql_error(error)
         except Exception as e:
             return format_internal_error(e)
-
-
-# https://github.com/graphql-python/graphene-django/issues/264
-class JWTGraphQLView(JSONWebTokenAuthentication, SafeGraphQLView):
-
-    def dispatch(self, request, *args, **kwargs):
-        try:
-            # if not already authenticated by django cookie sessions
-            # check the JWT token by re-using our DRF JWT
-            if not hasattr(request, 'user') or not request.user.is_authenticated:
-                result = self.authenticate(request)
-                if result:
-                    request.user, request.token = result
-                else:
-                    raise exceptions.AuthenticationFailed("No website or token authentication found")
-        except exceptions.AuthenticationFailed as e:
-            response = HttpResponse(
-                json.dumps({
-                    'errors': [str(e)]
-                }),
-                status=401,
-                content_type='application/json'
-            )
-            return response
-        return super().dispatch(request, *args, **kwargs)

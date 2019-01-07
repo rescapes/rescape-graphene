@@ -72,8 +72,12 @@ from .graphql_helpers.json_field_helpers import (
 )
 
 from .graphql_helpers.views import (
-    JWTGraphQLView,
     SafeGraphQLView
+)
+
+from .schema import (
+    Query,
+    Mutation
 )
 
 __all__ = [
@@ -88,4 +92,5 @@ __all__ = [
     'schema_models.user_schema'
     'schama_models.group_schema'
     'schama_models.geojson'
+    'schema.schema'
 ]

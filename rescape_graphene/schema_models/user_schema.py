@@ -1,4 +1,6 @@
 import graphene
+from graphql_jwt.decorators import login_required
+
 from ..django_helpers.write_helpers import increment_prop_until_unique
 
 from rescape_python_helpers import ramda as R
@@ -44,6 +46,7 @@ class UpsertUser(graphene.Mutation):
     """
     user = graphene.Field(UserType)
 
+    @login_required
     def mutate(self, info, user_data=None):
         user_model = get_user_model()
         data = R.merge(user_data, dict(password=make_password(R.prop('password', user_data), salt='not_random')) if
@@ -91,7 +94,7 @@ mutation TokenAuth($username: String!, $password: String!) {
   tokenAuth(username: $username, password: $password) {
     token
   }
-}''', variable_values=variables)
+}''', variables=variables)
 
 
 def graphql_verify_user(client, variables):
@@ -106,7 +109,7 @@ def graphql_verify_user(client, variables):
   verifyToken(token: $token) {
     payload
   }
-}''', variable_values=variables)
+}''', variables=variables)
 
 
 def graphql_refresh_token(client, variables):
@@ -123,4 +126,4 @@ def graphql_refresh_token(client, variables):
         token
     payload
     }
-}''', variable_values=variables)
+}''', variables=variables)

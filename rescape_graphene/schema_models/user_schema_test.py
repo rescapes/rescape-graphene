@@ -1,7 +1,7 @@
 import logging
 
 from sample_webapp.test_schema_helpers import assert_no_errors
-from sample_webapp.testcases import GraphQLJWTTestCase, GraphQLClient, test_client
+from sample_webapp.testcases import GraphQLJWTTestCase, GraphQLClient, client_for_testing
 from rescape_python_helpers import ramda as R
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
@@ -21,7 +21,7 @@ class UserTypeCase(GraphQLJWTTestCase):
     def setUp(self):
         # Prevent a circular dependency
         from sample_webapp.sample_schema import schema
-        self.client = test_client(schema)
+        self.client = client_for_testing(schema)
         self.client.schema(schema)
         self.user, _ = User.objects.update_or_create(username="lion", first_name='Simba', last_name='The Lion',
                                       password=make_password("roar", salt='not_random'))

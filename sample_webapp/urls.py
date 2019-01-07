@@ -1,7 +1,7 @@
 from django.conf.urls import url
 from django.urls import include
 from django.views.decorators.csrf import csrf_exempt
-from rescape_graphene.graphql_helpers.views import SafeGraphQLView, JWTGraphQLView
+from rescape_graphene.graphql_helpers.views import SafeGraphQLView
 from rest_framework.routers import DefaultRouter
 from django.contrib import admin
 
@@ -12,5 +12,5 @@ urlpatterns = [
     url('^', include('django.contrib.auth.urls')),
     url(r'^admin/', admin.site.urls),
     url(r'^admin/', include('loginas.urls')),
-    url(r'^graphql', csrf_exempt(JWTGraphQLView.as_view(graphiql=True))),
+    url(r'^graphql', csrf_exempt(SafeGraphQLView.as_view(graphiql=True))),
 ]

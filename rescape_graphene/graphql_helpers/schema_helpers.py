@@ -492,7 +492,7 @@ def graphql_query(graphene_type, fields, query_name):
     for examples
     :param query_name:
     :returns A lambda that expects a Graphene client and **kwargs that contain kwargs for the client.execute call.
-    The only key allowed is variable_values, which contains param key values. Example: variable_values={'user': 'Peter'}
+    The only key allowed is variables, which contains param key values. Example: variables={'user': 'Peter'}
     This results in query whatever(id: String!) { query_name(id: id) ... }
     """
     field_type_lookup = allowed_query_and_read_arguments(fields, graphene_type)
@@ -509,8 +509,8 @@ def graphql_query(graphene_type, fields, query_name):
         # read input type like 'FeatureCollectionDataTypeofFooTypeRelatedReadInputType'
         variable_definitions = R.map_with_obj(
             lambda k, v: field_type_lookup[k]._meta.name,
-            kwargs['variable_values']
-        ) if R.has('variable_values', kwargs) else {}
+            kwargs['variables']
+        ) if R.has('variables', kwargs) else {}
 
         formatted_definitions = R.join(
             ', ',

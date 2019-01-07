@@ -15,13 +15,13 @@ from rescape_python_helpers import ramda as R
 class GraphQLRequestFactory(RequestFactory):
 
     def execute(self, query, **variables):
-        return self._schema.execute(
+        return self.schema.execute(
             query,
-            variable_values=variables['variable_values'] if R.has('variable_values', variables) else None,
+            variables=variables['variables'] if R.has('variables', variables) else None,
             context_value=mock.MagicMock())
 
 
-def test_client(schema):
+def client_for_testing(schema):
     """
     Creates a Graphql Test Client which adds in stack traces, which absurdly aren't part of the original
     :param schema:

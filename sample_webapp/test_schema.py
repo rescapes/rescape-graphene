@@ -1,16 +1,19 @@
 import logging
 
 import pytest
-from rescape_python_helpers import ramda as R, ewkt_from_feature
+from django.contrib.auth import get_user_model
+from graphql_jwt.testcases import JSONWebTokenTestCase
+from rescape_python_helpers import ramda as R
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
 from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature_collection
 
-from rescape_graphene.graphql_helpers.schema_helpers import grapqhl_authorization_mutation
-from sample_webapp.sample_schema import schema, graphql_query_foos, Foo, graphql_update_or_create_foo
+from sample_webapp.foo_schema import graphql_query_foos, graphql_update_or_create_foo
+from sample_webapp.models import Foo
+from sample_webapp.sample_schema import schema
 from snapshottest import TestCase
 from rescape_graphene.schema_models.user_schema import graphql_update_or_create_user, graphql_query_users
-from sample_webapp.testcases import test_client
+from sample_webapp.testcases import client_for_testing
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -42,19 +45,17 @@ def smart_execute(schema, *args, **kwargs):
 
 
 @pytest.mark.django_db
-class GenaralTypeCase(TestCase):
-    """
-        Tests the query methods. This uses User but could be anything
-    """
+class TestSchema(JSONWebTokenTestCase, TestCase):
+
     client = None
 
     def setUp(self):
-        self.client = test_client(schema)
         Foo.objects.all().delete()
         User.objects.all().delete()
         self.lion, _ = User.objects.update_or_create(
             username="lion", first_name='Simba', last_name='The Lion',
             password=make_password("roar", salt='not_random'),
+            is_staff=True
         )
         self.cat, _ = User.objects.update_or_create(
             username="cat", first_name='Felix', last_name='The Cat',
@@ -71,6 +72,7 @@ class GenaralTypeCase(TestCase):
             geo_collection=ewkt_from_feature_collection(initial_geojson),
             geojson=None
         )
+        self.client.authenticate(self.lion)
 
     # We need to mock a Resuest in the test client for this to work
     #def test_auth(self):
@@ -79,14 +81,14 @@ class GenaralTypeCase(TestCase):
 
     def test_query(self):
         user_results = graphql_query_users(self.client)
-        assert not R.has('errors', user_results), R.dump_json(R.prop('errors', user_results))
+        assert not R.prop('errors', user_results), R.dump_json(R.prop('errors', user_results))
         assert 2 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'users'], user_results)))
 
         # Query using for foos based on the related User
         foo_results = graphql_query_foos(self.client,
-                                         variable_values=dict(user=R.pick(['id'], self.lion.__dict__))
+                                         variables=dict(user=R.pick(['id'], self.lion.__dict__))
                                          )
-        assert not R.has('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
+        assert not R.prop('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
         assert 1 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'foos'], foo_results)))
         # Make sure the Django instance in the json blob was resolved
         assert str(self.cat.id) == R.item_path(['data', 'foos', 0, 'data', 'friend', 'id'], foo_results)
@@ -94,16 +96,16 @@ class GenaralTypeCase(TestCase):
     def test_query_foo_with_null_geojson(self):
         # Query using for foos based on the related User
         foo_results = graphql_query_foos(self.client,
-                                         variable_values=dict(key='fookit')
+                                         variables=dict(key='fookit')
                                          )
-        assert not R.has('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
+        assert not R.prop('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
         assert 1 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'foos'], foo_results)))
 
     def test_create_user(self):
         values = dict(username="dino", firstName='T', lastName='Rex',
                       password=make_password("rrrrhhh", salt='not_random'))
         result = graphql_update_or_create_user(self.client, values)
-        assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+        assert not R.prop('errors', result), R.dump_json(R.prop('errors', result))
         # look at the users added and omit the non-determinant values
         self.assertMatchSnapshot(
             R.omit_deep(omit_props, R.item_path(['data', 'createUser', 'user'], result)))
@@ -161,7 +163,7 @@ class GenaralTypeCase(TestCase):
         )
         result = graphql_update_or_create_foo(self.client, values)
         result_path_partial = R.item_path(['data', 'createFoo', 'foo'])
-        assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+        assert not R.prop('errors', result), R.dump_json(R.prop('errors', result))
         created = result_path_partial(result)
         # look at the Foo added and omit the non-determinant dateJoined
         self.assertMatchSnapshot(R.omit_deep(omit_props, created))
@@ -169,7 +171,7 @@ class GenaralTypeCase(TestCase):
         # Try creating the same Foo again, because of the unique constraint on key and the unique_with property
         # on its field definition value, it will increment to luxembourg1
         new_result = graphql_update_or_create_foo(self.client, values)
-        assert not R.has('errors', new_result), R.dump_json(R.prop('errors', new_result))
+        assert not R.prop('errors', new_result), R.dump_json(R.prop('errors', new_result))
         created_too = result_path_partial(new_result)
         assert created['id'] != created_too['id']
         assert created_too['key'] == 'luxembourg1'
@@ -188,7 +190,7 @@ class GenaralTypeCase(TestCase):
             self.client,
             dict(id=id, firstName='Al', lastName="Lissaurus")
         )
-        assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+        assert not R.prop('errors', result), R.dump_json(R.prop('errors', result))
         self.assertMatchSnapshot(R.omit_deep(omit_props, R.item_path(['data', 'updateUser', 'user'], result)))
 
     # def test_delete(self):
