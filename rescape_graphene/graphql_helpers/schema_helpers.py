@@ -462,6 +462,20 @@ def allowed_filter_arguments(fields_dict, graphene_type):
     )(fields_dict)
 
 
+def process_filter_kwargs(kwargs):
+    """
+        Converts filter names for resolvers. They come in with an _ but need __ to match django's query language
+    :param kwargs:
+    :return: kwargs with FILTER_FIELDS keys modified to have __
+    """
+    # Convert filters from _ to __
+    return R.map_keys(
+        lambda k: k.replace('_', '__')
+        if R.any_satisfy(lambda string: f'_{string}' in k, FILTER_FIELDS)
+        else k,
+        kwargs)
+
+
 def guess_update_or_create(fields_dict):
     """
     Determines if the query is intended to be a create or update
