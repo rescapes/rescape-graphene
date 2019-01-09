@@ -51,43 +51,49 @@ READ = 'read'
 UPDATE = 'update'
 DELETE = 'delete'
 
-# From django-filters. Whenever grapene supports filtering without Relay we can get rid of this here
+# From django-filters. Whenever graphene supports filtering without Relay we can get rid of this here
+# Educated guesss about what types for each to support. Django/Postgres might support fewer or more of these
+# combinations than I'm aware of
 FILTER_FIELDS = {
-    'year': dict(),
-    'month': dict(),
-    'day': dict(),
-    'week_day': dict(),
-    'hour': dict(),
-    'minute': dict(),
-    'second': dict(),
+    'year': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+    'month': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+    'day': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+    'week_day': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+    'hour': dict(allowed_types=[graphene.DateTime]),
+    'minute': dict(allowed_types=[graphene.DateTime]),
+    'second': dict(allowed_types=[graphene.DateTime]),
 
     # standard lookups
-    'exact': dict(),
+    # 'exact': dict(), # this is the default
     'iexact': dict(),
     'contains': dict(),
     'icontains': dict(),
     'in': dict(type_modifier=lambda typ: graphene.List(typ)),
-    'gt': dict(),
-    'gte': dict(),
-    'lt': dict(),
-    'lte': dict(),
-    'startswith': dict(),
-    'istartswith': dict(),
-    'endswith': dict(),
-    'iendswith': dict(),
-    'range': dict(),
+    'gt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
+    'gte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
+    'lt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
+    'lte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
+    'startswith': dict(allowed_types=[graphene.String]),
+    'istartswith': dict(allowed_types=[graphene.String]),
+    'endswith': dict(allowed_types=[graphene.String]),
+    'iendswith': dict(allowed_types=[graphene.String]),
+    # Range expects a 2 item tuple, so give it a list
+    'range': dict(type_modifier=lambda typ: graphene.List(typ)),
     'isnull': dict(),
-    'regex': dict(),
-    'iregex': dict(),
-    'search': dict(),
+    'regex': dict(allowed_types=[graphene.String]),
+    'iregex': dict(allowed_types=[graphene.String]),
+    'search': dict(allowed_types=[graphene.String]),
 
     # postgres lookups
     'contained_by': dict(),
-    'overlap': dict(),
-    'has_key': dict(),
-    'has_keys': dict(),
-    'has_any_keys': dict(),
-    'trigram_similar': dict(),
+    # Date overlap
+    'overlap': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+    # These are probably for json types so maybe useful
+    'has_key': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
+    'has_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
+    'has_any_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
+    # groups of 3 characters for similarity recoginition
+    'trigram_similar': dict(allowed_types=[graphene.String]),
 }
 
 
@@ -384,12 +390,10 @@ def resolve_type(graphene_type, value):
         input_type_class(value, READ, graphene_type)()
 
 
-def allowed_query_and_read_arguments(fields_dict, graphene_type):
+def allowed_read_arguments(fields_dict, graphene_type):
     """
-        Returns fields that can be queried and returned.
-        Querying meaning foo: 1, etc. and returned meaning what fields are returned
-        For now these are the same. It might make sense to prevent some query arguments for efficiency,
-        or it might be possible to use extended query arguments. We'll deal with that later
+        Returns fields that can be returned.
+        allowed_filter_arguments below is similar but for arguments
     :param fields_dict: The fields_dict for the Django model
     :param graphen_type: Type used for emboded input class naming
     :return: dict of field keys and there graphene type, either a primitive or input type
@@ -407,6 +411,31 @@ def allowed_query_and_read_arguments(fields_dict, graphene_type):
     )(fields_dict)
 
 
+def allowed_filter_pairs(field_name, graphene_type):
+    """
+        Creates pairs of filter_field, graphene_type such as [id_contains, Int(), id_in, List(Int())] for
+        filter fields that are allowed for the field_name's graphene_type
+    :param field_name: Field being given filters
+    :param graphene_type: Graphene type of the field
+    :return: List of pairs
+    """
+    return R.map_with_obj_to_values(
+        # Make all the filter pairs for each key id: id_contains, id: id_in, etc
+        # We could of course make this smarter to allow certain fields for certain types
+        lambda filter_str, config: [
+            f'{field_name}_{filter_str}',
+            # If a type_modifier is needed for the filter type, such as a List constructor call it
+            # with the field's type as an argument
+            (config['type_modifier'] if R.has('type_modifier', config) else lambda t: t())(graphene_type)
+        ],
+        # Only allow filters compient with the type of pair[1]
+        R.filter_dict(
+            lambda keyvalue: not R.has('allowed_types', keyvalue[1]) or graphene_type in keyvalue[1]['allowed_types'],
+            FILTER_FIELDS
+        )
+    )
+
+
 def make_filters(pair):
     """
         Add the needed filters to the standard 'eq' value
@@ -417,17 +446,7 @@ def make_filters(pair):
     return R.from_pairs(
         R.concat(
             [pair],
-            R.map_with_obj_to_values(
-                # Make all the filter pairs for each key id: id_contains, id: id_in, etc
-                # We could of course make this smarter to allow certain fields for certain types
-                lambda filter_str, config: [
-                    f'{pair[0]}_{filter_str}',
-                    # If a type_modifier is needed for the filter type, such as a List constructor call it
-                    # with the field's type as an argument
-                    (config['type_modifier'] if R.has('type_modifier', config) else R.identity)(pair[1].__class__)
-                ],
-                FILTER_FIELDS
-            )
+            allowed_filter_pairs(pair[0], pair[1].__class__)
         )
     )
 
@@ -613,7 +632,7 @@ def graphql_query(graphene_type, fields, query_name):
     The only key allowed is variables, which contains param key values. Example: variables={'user': 'Peter'}
     This results in query whatever(id: String!) { query_name(id: id) ... }
     """
-    field_type_lookup = allowed_query_and_read_arguments(fields, graphene_type)
+    field_type_lookup = allowed_read_arguments(fields, graphene_type)
 
     def form_query(client, field_overrides={}, **kwargs):
         """

@@ -12,7 +12,7 @@ from rescape_graphene.schema_models.geojson.types.feature_collection import Feat
     feature_collection_data_type_fields
 
 from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser, user_fields
-from rescape_graphene.graphql_helpers.schema_helpers import allowed_query_and_read_arguments, REQUIRE, \
+from rescape_graphene.graphql_helpers.schema_helpers import allowed_read_arguments, REQUIRE, \
     merge_with_django_properties, guess_update_or_create, \
     CREATE, UPDATE, input_type_parameters_for_update_or_create, graphql_update_or_create, graphql_query, \
     input_type_fields, DENY, stringify_query_kwargs, IGNORE
@@ -57,17 +57,17 @@ class FooType(DjangoObjectType):
 # since graphene just reads the underlying. Django model to generate the fields
 FooType._meta.fields['data'] = Field(
     FooDataType,
-    allowed_query_and_read_arguments(foo_data_fields, FooDataType),
+    allowed_read_arguments(foo_data_fields, FooDataType),
     resolver=resolver_for_dict_field
 )
 FooType._meta.fields['geojson'] = Field(
     FeatureCollectionDataType,
-    allowed_query_and_read_arguments(feature_collection_data_type_fields, FeatureCollectionDataType),
+    allowed_read_arguments(feature_collection_data_type_fields, FeatureCollectionDataType),
     resolver=resolver_for_dict_field
 )
 FooType._meta.fields['geo_collection'] = Field(
     FeatureCollectionDataType,
-    allowed_query_and_read_arguments(feature_collection_data_type_fields, FeatureCollectionDataType),
+    allowed_read_arguments(feature_collection_data_type_fields, FeatureCollectionDataType),
     resolver=resolver_for_feature_collection
 )
 
