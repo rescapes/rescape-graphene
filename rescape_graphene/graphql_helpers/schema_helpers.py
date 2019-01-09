@@ -92,7 +92,7 @@ FILTER_FIELDS = {
     'has_key': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
     'has_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
     'has_any_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
-    # groups of 3 characters for similarity recoginition
+    # groups of 3 characters for similarity recognition
     'trigram_similar': dict(allowed_types=[graphene.String]),
 }
 
