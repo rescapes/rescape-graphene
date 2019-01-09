@@ -22,6 +22,7 @@ from rescape_python_helpers.functional.ramda import to_dict_deep
 
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
+
 logger = logging.getLogger('rescape_graphene')
 
 DENY = 'deny'
@@ -50,6 +51,47 @@ READ = 'read'
 UPDATE = 'update'
 DELETE = 'delete'
 
+# From django-filters. Whenever grapene supports filtering without Relay we can get rid of this here
+FILTER_FIELDS = [
+    'year',
+    'month',
+    'day',
+    'week_day',
+    'hour',
+    'minute',
+    'second',
+
+    # standard lookups
+    'exact',
+    'iexact',
+    'contains',
+    'icontains',
+    'in',
+    'gt',
+    'gte',
+    'lt',
+    'lte',
+    'startswith',
+    'istartswith',
+    'endswith',
+    'iendswith',
+    'range',
+    'isnull',
+    'regex',
+    'iregex',
+    'search',
+
+    # postgres lookups
+    'contained_by',
+    'overlap',
+    'has_key',
+    'has_keys',
+    'has_any_keys',
+    'trigram_similar',
+    'contains'
+]
+
+
 # https://github.com/graphql-python/graphene-django/issues/124
 class ErrorMiddleware(object):
     def on_error(self, error):
@@ -59,6 +101,7 @@ class ErrorMiddleware(object):
 
     def resolve(self, next, root, args, context, info):
         return next(root, args, context, info).catch(self.on_error)
+
 
 # https://github.com/graphql-python/graphene-django/issues/91
 class Decimal(Scalar):
@@ -303,6 +346,7 @@ def parse_django_class(model, field_dict, parent_type_classes=[]):
         )
     ))
 
+
 def django_model_of_graphene_type(graphene_type):
     """
         Returns the Django model underlying the Graphene type, if any
@@ -310,6 +354,7 @@ def django_model_of_graphene_type(graphene_type):
     :return: The Django model type or None
     """
     return R.item_str_path_or(None, '_meta.model', graphene_type)
+
 
 def merge_with_django_properties(graphene_type, field_dict):
     """
@@ -328,6 +373,18 @@ def merge_with_django_properties(graphene_type, field_dict):
     )
 
 
+@R.curry
+def resolve_type(graphene_type, value):
+    # If the type is a scalar, just instantiate
+    # Otherwise created a related field InputType subclass. In order to query a nested object, it has to
+    # be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
+    # graphql: users: (name: "Peter", group: {role: "admin"})
+    # https://github.com/graphql-python/graphene/issues/431
+    return R.prop('type', value)() if \
+        inspect.isclass(R.prop('type', value)) and issubclass(R.prop('type', value), Scalar) else \
+        input_type_class(value, READ, graphene_type)()
+
+
 def allowed_query_and_read_arguments(fields_dict, graphene_type):
     """
         Returns fields that can be queried and returned.
@@ -336,21 +393,64 @@ def allowed_query_and_read_arguments(fields_dict, graphene_type):
         or it might be possible to use extended query arguments. We'll deal with that later
     :param fields_dict: The fields_dict for the Django model
     :param graphen_type: Type used for emboded input class naming
+    :return: dict of field keys and there graphene type, either a primitive or input type
+    """
+    return R.compose(
+        R.map_dict(resolve_type(graphene_type)),
+        R.filter_dict(
+            lambda key_value:
+            # Don't allow DENYed READ fields to be used for querying
+            R.and_func(
+                True,
+                R.not_func(R.prop_eq_or_in(READ, DENY, key_value[1]))
+            )
+        )
+    )(fields_dict)
+
+
+def make_filters(pair):
+    """
+        Add the needed filters to the standard 'eq' value
+        This compensates for django-filter not being implemented to work in graphene without Relay
+    :param pair:
     :return:
     """
+    return R.from_pairs(
+        R.concat(
+            [pair],
+            R.map(
+                # Make all the filter pairs for each key id: id_contains, id: id_in, etc
+                # We could of course make this smarter to allow certain fields for certain types
+                lambda filter_str: [f'{pair[0]}_{filter_str}', graphene.List(pair[1].__class__)],
+                FILTER_FIELDS
+            )
+        )
+    )
 
-    def resolve_type(value):
-        # If the type is a scalar, just instantiate
-        # Otherwise created a related field InputType subclass. In order to query a nested object, it has to
-        # be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
-        # graphql: users: (name: "Peter", group: {role: "admin"})
-        # https://github.com/graphql-python/graphene/issues/431
-        return R.prop('type', value)() if \
-            inspect.isclass(R.prop('type', value)) and issubclass(R.prop('type', value), Scalar) else \
-            input_type_class(value, READ, graphene_type)()
 
+def add_filters(argument_dict):
+    """
+        Adds filter arguments to 'eq' arguments.
+    :param argument_dict:
+    :return: dict of the 'eq' arguments and the filter args e.g. {id: Int(), id_contains: List(Int), ...}
+    """
     return R.compose(
-        R.map_dict(resolve_type),
+        R.merge_all,
+        lambda z: R.map(make_filters, z),
+        lambda z: R.to_pairs(z)
+    )(argument_dict)
+
+
+def allowed_filter_arguments(fields_dict, graphene_type):
+    """
+        Like allowed_query_and_read_arguments but only used for arguments and adds filter arguments like id_contains
+    :param fields_dict: The fields_dict for the Django model
+    :param graphen_type: Type used for emboded input class naming
+    :return: dict of field keys and there graphene type, either a primitive or input type
+    """
+    return R.compose(
+        lambda argument_dict: add_filters(argument_dict),
+        R.map_dict(resolve_type(graphene_type)),
         R.filter_dict(
             lambda key_value:
             # Don't allow DENYed READ fields to be used for querying
@@ -562,6 +662,7 @@ def grapqhl_authorization_mutation(client, values):
         }'''))
     client.execute(mutation, variables=values)
 
+
 @R.curry
 def graphql_update_or_create(mutation_config, fields, client, values):
     """
@@ -627,7 +728,9 @@ def process_query_value(model, value_dict):
     E.g. model User value {username: 'foo'} or model Group value {name: 'goo', user: {username: 'foo'}}
     :return: A flat list of key values representing the value dict, including resolved deep values
     """
-    return R.chain(R.identity, R.map_with_obj_to_values(lambda key, inner_value: process_query_kwarg(model, key, inner_value), value_dict))
+    return R.chain(R.identity,
+                   R.map_with_obj_to_values(lambda key, inner_value: process_query_kwarg(model, key, inner_value),
+                                            value_dict))
 
 
 def process_query_kwarg(model, key, value):
@@ -655,7 +758,6 @@ def process_query_kwarg(model, key, value):
     elif isinstance(model._meta._forward_fields_map[key], (ManyToManyField)):
         raise NotImplementedError("TODO need to implement stringify for ManyToMany")
 
-
     return [[key, value]]
 
 
@@ -672,7 +774,8 @@ def stringify_query_kwargs(model, kwargs):
     """
     # Since each process-query_kwargs returns an array of one or more pairs (due to potential recursion), we have
     # to take the values of R.map_with_obj and then flatten those values together and finally convert them from pairs to a dict
-    return R.from_pairs(R.flatten(R.values(R.map_with_obj(lambda key, value: process_query_kwarg(model, key, value), kwargs))))
+    return R.from_pairs(
+        R.flatten(R.values(R.map_with_obj(lambda key, value: process_query_kwarg(model, key, value), kwargs))))
 
 
 def merge_data_fields_on_update(data_fields, existing_instance, data):
