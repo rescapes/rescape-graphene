@@ -52,44 +52,43 @@ UPDATE = 'update'
 DELETE = 'delete'
 
 # From django-filters. Whenever grapene supports filtering without Relay we can get rid of this here
-FILTER_FIELDS = [
-    'year',
-    'month',
-    'day',
-    'week_day',
-    'hour',
-    'minute',
-    'second',
+FILTER_FIELDS = {
+    'year': dict(),
+    'month': dict(),
+    'day': dict(),
+    'week_day': dict(),
+    'hour': dict(),
+    'minute': dict(),
+    'second': dict(),
 
     # standard lookups
-    'exact',
-    'iexact',
-    'contains',
-    'icontains',
-    'in',
-    'gt',
-    'gte',
-    'lt',
-    'lte',
-    'startswith',
-    'istartswith',
-    'endswith',
-    'iendswith',
-    'range',
-    'isnull',
-    'regex',
-    'iregex',
-    'search',
+    'exact': dict(),
+    'iexact': dict(),
+    'contains': dict(),
+    'icontains': dict(),
+    'in': dict(type_modifier=lambda typ: graphene.List(typ)),
+    'gt': dict(),
+    'gte': dict(),
+    'lt': dict(),
+    'lte': dict(),
+    'startswith': dict(),
+    'istartswith': dict(),
+    'endswith': dict(),
+    'iendswith': dict(),
+    'range': dict(),
+    'isnull': dict(),
+    'regex': dict(),
+    'iregex': dict(),
+    'search': dict(),
 
     # postgres lookups
-    'contained_by',
-    'overlap',
-    'has_key',
-    'has_keys',
-    'has_any_keys',
-    'trigram_similar',
-    'contains'
-]
+    'contained_by': dict(),
+    'overlap': dict(),
+    'has_key': dict(),
+    'has_keys': dict(),
+    'has_any_keys': dict(),
+    'trigram_similar': dict(),
+}
 
 
 # https://github.com/graphql-python/graphene-django/issues/124
@@ -418,10 +417,15 @@ def make_filters(pair):
     return R.from_pairs(
         R.concat(
             [pair],
-            R.map(
+            R.map_with_obj_to_values(
                 # Make all the filter pairs for each key id: id_contains, id: id_in, etc
                 # We could of course make this smarter to allow certain fields for certain types
-                lambda filter_str: [f'{pair[0]}_{filter_str}', graphene.List(pair[1].__class__)],
+                lambda filter_str, config: [
+                    f'{pair[0]}_{filter_str}',
+                    # If a type_modifier is needed for the filter type, such as a List constructor call it
+                    # with the field's type as an argument
+                    (config['type_modifier'] if R.has('type_modifier', config) else R.identity)(pair[1].__class__)
+                ],
                 FILTER_FIELDS
             )
         )
@@ -471,7 +475,7 @@ def process_filter_kwargs(kwargs):
     # Convert filters from _ to __
     return R.map_keys(
         lambda k: k.replace('_', '__')
-        if R.any_satisfy(lambda string: f'_{string}' in k, FILTER_FIELDS)
+        if R.any_satisfy(lambda string: f'_{string}' in k, R.keys(FILTER_FIELDS))
         else k,
         kwargs)
 
