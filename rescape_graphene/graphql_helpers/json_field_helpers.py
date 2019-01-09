@@ -9,7 +9,7 @@ from inflection import underscore
 # Helpers for json fields. json fields are not a Django model,
 # rather a json blob that is the field data of the Region and Resource models
 ###
-from rescape_graphene.graphql_helpers.schema_helpers import allowed_read_arguments, stringify_query_kwargs
+from rescape_graphene.graphql_helpers.schema_helpers import allowed_filter_arguments
 
 
 def resolve_selections(context):
@@ -193,10 +193,10 @@ def type_modify_fields(data_field_configs):
     """
 
     def apply_type(v):
-        fields = allowed_read_arguments(R.prop('fields', v), R.prop('graphene_type', v)) if \
+        allowed_arguments = allowed_filter_arguments(R.prop('fields', v), R.prop('graphene_type', v)) if \
             R.has('fields', v) else None
 
-        args = [R.prop('type', v)] + ([fields] if fields else [])
+        args = [R.prop('type', v)] + ([allowed_arguments] if allowed_arguments else [])
         return R.prop_or(lambda typ: typ(), 'type_modifier', v)(*args)
 
     return R.map_with_obj(

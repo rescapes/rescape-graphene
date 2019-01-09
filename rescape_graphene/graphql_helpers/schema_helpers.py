@@ -93,7 +93,7 @@ FILTER_FIELDS = {
     'has_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
     'has_any_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
     # groups of 3 characters for similarity recognition
-    'trigram_similar': dict(allowed_types=[graphene.String]),
+    'trigram_similar': dict(allowed_types=[graphene.String])
 }
 
 
@@ -390,7 +390,7 @@ def resolve_type(graphene_type, value):
         input_type_class(value, READ, graphene_type)()
 
 
-def allowed_read_arguments(fields_dict, graphene_type):
+def allowed_read_fields(fields_dict, graphene_type):
     """
         Returns fields that can be returned.
         allowed_filter_arguments below is similar but for arguments
@@ -430,7 +430,9 @@ def allowed_filter_pairs(field_name, graphene_type):
         ],
         # Only allow filters compient with the type of pair[1]
         R.filter_dict(
-            lambda keyvalue: not R.has('allowed_types', keyvalue[1]) or graphene_type in keyvalue[1]['allowed_types'],
+            lambda keyvalue: not R.has('allowed_types', keyvalue[1]) or R.any_satisfy(
+                lambda typ: issubclass(graphene_type, typ), keyvalue[1]['allowed_types']
+            ),
             FILTER_FIELDS
         )
     )
@@ -459,8 +461,8 @@ def add_filters(argument_dict):
     """
     return R.compose(
         R.merge_all,
-        lambda z: R.map(make_filters, z),
-        lambda z: R.to_pairs(z)
+        R.map(make_filters),
+        R.to_pairs
     )(argument_dict)
 
 
@@ -485,18 +487,22 @@ def allowed_filter_arguments(fields_dict, graphene_type):
     )(fields_dict)
 
 
-def process_filter_kwargs(kwargs):
+def process_filter_kwargs(model, kwargs):
     """
         Converts filter names for resolvers. They come in with an _ but need __ to match django's query language
+    :param model: The django model--used to flatten the objects properly
     :param kwargs:
     :return: kwargs with FILTER_FIELDS keys modified to have __
     """
-    # Convert filters from _ to __
-    return R.map_keys(
-        lambda k: k.replace('_', '__')
-        if R.any_satisfy(lambda string: f'_{string}' in k, R.keys(FILTER_FIELDS))
-        else k,
-        kwargs)
+    return R.compose(
+        stringify_query_kwargs(model),
+
+        # Convert filters from _ to __
+        R.map_keys(
+            lambda k: k.replace('_', '__')
+            if R.any_satisfy(lambda string: f'_{string}' in k, R.keys(FILTER_FIELDS))
+            else k)
+    )(kwargs)
 
 
 def guess_update_or_create(fields_dict):
@@ -632,7 +638,7 @@ def graphql_query(graphene_type, fields, query_name):
     The only key allowed is variables, which contains param key values. Example: variables={'user': 'Peter'}
     This results in query whatever(id: String!) { query_name(id: id) ... }
     """
-    field_type_lookup = allowed_read_arguments(fields, graphene_type)
+    field_type_lookup = allowed_read_fields(fields, graphene_type)
 
     def form_query(client, field_overrides={}, **kwargs):
         """
@@ -784,8 +790,10 @@ def process_query_kwarg(model, key, value):
     :return: Flat list of pairs, where first value of pairs is a django query string like 'foo__car' or 'foo__contains'
      and second is value like 2
     """
-    if isinstance(model._meta._forward_fields_map[key], (JSONField)):
-        # JSONField's need to change the key to __contains
+    if isinstance(model._meta._forward_fields_map[key], (JSONField,)):
+        # Small correction here to change the data filter to data__contains to handle any json
+        # https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
+        # This is just one way of filtering json. We can also do it with the argument structure
         return [['%s__contains' % key, value]]
     elif isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField)):
         # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
@@ -798,6 +806,7 @@ def process_query_kwarg(model, key, value):
     return [[key, value]]
 
 
+@R.curry
 def stringify_query_kwargs(model, kwargs):
     """
         Small correction here to change the data filter to data__contains to handle any json

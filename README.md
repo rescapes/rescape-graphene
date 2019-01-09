@@ -77,6 +77,7 @@ GRANT ALL PRIVILEGES ON DATABASE rescape_graphene to test_user
 # Give Superuser permission to create test databases
 ALTER ROLE test_user SUPERUSER;
 
+# Run the migrations
 # Create a Django user test with pw testpass
  ./manage.py createsuperuser
  # or

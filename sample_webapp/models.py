@@ -1,8 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
 from django.contrib.gis.db.models import GeometryCollectionField, Model
+from django.contrib.postgres.fields import JSONField
 from django.db.models import CharField, DateTimeField, ForeignKey
-from jsonfield import JSONField
 
 
 class Foo(Model):

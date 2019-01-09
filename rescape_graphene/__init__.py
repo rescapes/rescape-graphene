@@ -6,7 +6,7 @@ from .graphql_helpers.schema_helpers import (
     process_field,
     parse_django_class,
     merge_with_django_properties,
-    allowed_read_arguments,
+    allowed_read_fields,
     guess_update_or_create,
     instantiate_graphene_type,
     input_type_fields,

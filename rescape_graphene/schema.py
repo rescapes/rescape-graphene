@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model, get_user
 from graphene import ObjectType, Schema
 from graphql_jwt.decorators import login_required, staff_member_required
 from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser, user_fields
-from rescape_graphene.graphql_helpers.schema_helpers import allowed_read_arguments, process_filter_kwargs, \
+from rescape_graphene.graphql_helpers.schema_helpers import allowed_read_fields, process_filter_kwargs, \
     allowed_filter_arguments
 
 
@@ -21,7 +21,7 @@ class Query(ObjectType):
 
     @staff_member_required
     def resolve_users(self, info, **kwargs):
-        modified_kwargs = process_filter_kwargs(kwargs)
+        modified_kwargs = process_filter_kwargs(get_user_model(), kwargs)
         return get_user_model().objects.filter(**modified_kwargs)
 
     @login_required
