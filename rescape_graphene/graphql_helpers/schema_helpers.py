@@ -18,7 +18,7 @@ from django.db.models import AutoField, CharField, BooleanField, BigAutoField, D
 from graphene import Scalar, InputObjectType, ObjectType
 from graphql.language import ast
 from inflection import camelize
-from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs
+from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs, flatten_dct_until
 
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
@@ -800,11 +800,20 @@ def process_query_kwarg(model, key, value):
     :return: Flat list of pairs, where first value of pairs is a django query string like 'foo__car' or 'foo__contains'
      and second is value like 2
     """
-    if isinstance(model._meta._forward_fields_map[key], (JSONField,)):
+
+    if key.endswith('contains'):
+        # Don't modify json contains searches
+        return [[key, value]]
+    if isinstance(R.prop_or(None, key, model._meta._forward_fields_map), (JSONField,)):
         # Small correction here to change the data filter to data__contains to handle any json
         # https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
         # This is just one way of filtering json. We can also do it with the argument structure
-        return to_pairs(flatten_dct({key: value}, '__'))
+        return R.compose(
+            to_pairs,
+            #R.map_keys(lambda k: f'{k}__contains'),
+            lambda dct: flatten_dct_until(dct, lambda key: not key.endswith('contains'), '__')
+        )({key: value})
+
     elif isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField)):
         # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
         related_model = model._meta._forward_fields_map[key].related_model
@@ -819,10 +828,9 @@ def process_query_kwarg(model, key, value):
 @R.curry
 def stringify_query_kwargs(model, kwargs):
     """
-        Small correction here to change the data filter to data__contains to handle any json
-        https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
-        This also handles resovling relationships like {user: {id: 1, group: {id: 2}}} in the kwargs by converting them
-        to user__id==1 and user__group__id==2
+        This handles resolving relationships like {user: {id: 1, group: {id: 2}}} in the kwargs by converting them
+        to user__id==1 and user__group__id==2. It also adds contains to the end of json objects so that arrays
+        are searched
         TODO it doesn't handle many-to-many yet. I need to write that
     :param data_field_name: The name of the data field, e.g. 'data'
     :param kwargs: The query kargs
