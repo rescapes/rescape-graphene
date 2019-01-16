@@ -71,6 +71,6 @@ class SafeGraphQLView(GraphQLView):
             elif isinstance(error, GraphQLSyntaxError):
                 return format_graphql_error(error)
             else:
-                GraphQLView.format_error(error)
+                return GraphQLView.format_error(error)
         except Exception as e:
             return format_internal_error(e)

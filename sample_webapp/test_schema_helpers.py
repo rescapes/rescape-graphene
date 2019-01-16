@@ -1,6 +1,5 @@
-import inspect
-
 from django.contrib.auth.hashers import make_password
+
 from rescape_graphene.schema_models.user_schema import UserType, user_fields
 
 from sample_webapp.sample_schema import FooType
@@ -11,7 +10,7 @@ from rescape_graphene.graphql_helpers.schema_helpers import allowed_read_fields,
 from snapshottest import TestCase
 from rescape_python_helpers import ramda as R
 
-from sample_webapp.testcases import client_for_testing
+from rescape_graphene.testcases import client_for_testing
 
 
 class SchemaHelpersTypeCase(TestCase):
@@ -19,22 +18,6 @@ class SchemaHelpersTypeCase(TestCase):
 
     def setUp(self):
         self.client = client_for_testing(schema)
-
-    def test_merge_with_django_properties(self):
-
-        user_results = R.map_dict(
-            lambda value: R.merge(value, dict(type=R.prop('type', value).__name__)),
-            user_fields
-        )
-        self.assertMatchSnapshot(user_results)
-        foo_results = R.map_dict(
-            lambda value: R.merge(value, dict(type=R.prop('type', value).__name__)),
-            foo_fields
-        )
-        def map_type(t):
-            return t.__name__ if inspect.isclass(t) else t
-
-        self.assertMatchSnapshot(R.map_deep(dict(type=map_type, graphene_type=map_type, django_type=map_type), R.omit_deep(['default', 'type_modifier'], foo_results)))
 
     # context_value={'user': 'Peter'}
     # root_value={'user': 'Peter'}
@@ -75,4 +58,4 @@ def assert_no_errors(result):
     :param result: The request Result
     :return: None
     """
-    assert not (R.prop('errors', result) and R.prop('errors', result)), R.dump_json(R.prop('errors', result))
+    assert not (R.prop_or(False, 'errors', result) and R.prop('errors', result)), R.dump_json(R.prop('errors', result))

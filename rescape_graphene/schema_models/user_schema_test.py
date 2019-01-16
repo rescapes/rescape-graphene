@@ -1,11 +1,10 @@
 import logging
 
 from sample_webapp.test_schema_helpers import assert_no_errors
-from sample_webapp.testcases import GraphQLJWTTestCase, GraphQLClient, client_for_testing
+from rescape_graphene.testcases import client_for_testing
 from rescape_python_helpers import ramda as R
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import User
-from graphene.test import Client
 from snapshottest import TestCase
 from .user_schema import graphql_update_or_create_user, graphql_query_users, \
     graphql_authenticate_user, graphql_verify_user, graphql_refresh_token
@@ -16,13 +15,13 @@ logger = logging.getLogger(__name__)
 omit_props = ['dateJoined']
 
 
-class UserTypeCase(GraphQLJWTTestCase):
+class UserTypeCase(TestCase):
 
     def setUp(self):
         # Prevent a circular dependency
         from sample_webapp.sample_schema import schema
         self.client = client_for_testing(schema)
-        self.client.schema(schema)
+        #self.client.schema(schema)
         self.user, _ = User.objects.update_or_create(username="lion", first_name='Simba', last_name='The Lion',
                                       password=make_password("roar", salt='not_random'))
         User.objects.update_or_create(username="cat", first_name='Felix', last_name='The Cat',

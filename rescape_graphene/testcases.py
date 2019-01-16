@@ -1,24 +1,12 @@
 import traceback
-
 import six
+from django.contrib.auth.models import AnonymousUser
 from django.test import Client, RequestFactory, testcases
-from graphene.test import Client as GrapheneTestClient, default_format_error
-from unittest import mock
-import graphene
+from graphene.test import Client as GrapheneTestClient
 from graphql import GraphQLError
 from graphql.error import format_error as format_graphql_error
 
 from rescape_python_helpers import ramda as R
-
-
-# https://github.com/flavors/django-graphql-jwt/blob/master/tests/testcases.py
-class GraphQLRequestFactory(RequestFactory):
-
-    def execute(self, query, **variables):
-        return self.schema.execute(
-            query,
-            variables=variables['variables'] if R.has('variables', variables) else None,
-            context_value=mock.MagicMock())
 
 
 def client_for_testing(schema):
@@ -38,20 +26,14 @@ def client_for_testing(schema):
     """
     Creates a test client with an error formatter that shows the stack trace, amazing
     """
-    return GrapheneTestClient(
+    return MyGrapheneTestClient(
         schema, format_error=format_error
     )
 
 
-class GraphQLClient(GraphQLRequestFactory, Client):
+class MyGrapheneTestClient(GrapheneTestClient):
 
-    def __init__(self, **defaults):
-        super(GraphQLClient, self).__init__(**defaults)
-        self._schema = None
-
-    def schema(self, schema):
-        self._schema = schema
-
-
-class GraphQLJWTTestCase(testcases.TestCase):
-    client_class = GraphQLClient
+    def execute(self, *args, **kwargs):
+        req = RequestFactory().get('/')
+        req.user = AnonymousUser()
+        return super(MyGrapheneTestClient, self).execute(*args, context_value=req, **kwargs)

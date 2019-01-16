@@ -1,7 +1,6 @@
 import logging
 
 import pytest
-from django.contrib.auth import get_user_model
 from graphql_jwt.testcases import JSONWebTokenTestCase
 from rescape_python_helpers import ramda as R
 from django.contrib.auth.hashers import make_password
@@ -10,10 +9,8 @@ from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature
 
 from sample_webapp.foo_schema import graphql_query_foos, graphql_update_or_create_foo
 from sample_webapp.models import Foo
-from sample_webapp.sample_schema import schema
 from snapshottest import TestCase
 from rescape_graphene.schema_models.user_schema import graphql_update_or_create_user, graphql_query_users
-from sample_webapp.testcases import client_for_testing
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

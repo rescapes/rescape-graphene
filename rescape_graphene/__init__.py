@@ -80,6 +80,10 @@ from .schema import (
     Mutation
 )
 
+from .testcases import (
+    client_for_testing
+)
+
 __all__ = [
     'functional.ramda',
     'graphql_helpers.schema_helpers',
@@ -93,4 +97,5 @@ __all__ = [
     'schama_models.group_schema'
     'schama_models.geojson'
     'schema.schema'
+    'client_for_testing'
 ]
