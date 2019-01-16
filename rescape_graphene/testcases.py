@@ -9,7 +9,7 @@ from graphql.error import format_error as format_graphql_error
 from rescape_python_helpers import ramda as R
 
 
-def client_for_testing(schema):
+def client_for_testing(schema, user=None):
     """
     Creates a Graphql Test Client which adds in stack traces, which absurdly aren't part of the original
     :param schema:
@@ -27,13 +27,17 @@ def client_for_testing(schema):
     Creates a test client with an error formatter that shows the stack trace, amazing
     """
     return MyGrapheneTestClient(
-        schema, format_error=format_error
+        schema, user, format_error=format_error
     )
 
 
 class MyGrapheneTestClient(GrapheneTestClient):
 
+    def __init__(self, schema, user, format_error=None, **execute_options):
+        self.user = user
+        super(MyGrapheneTestClient, self).__init__(schema, format_error, **execute_options)
+
     def execute(self, *args, **kwargs):
         req = RequestFactory().get('/')
-        req.user = AnonymousUser()
+        req.user = self.user or AnonymousUser()
         return super(MyGrapheneTestClient, self).execute(*args, context_value=req, **kwargs)
