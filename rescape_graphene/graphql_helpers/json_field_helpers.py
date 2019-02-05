@@ -156,6 +156,18 @@ def resolver_for_feature_collection(resource, context, **kwargs):
     return namedtuple('DataTuple', R.keys(result))(*R.values(result))
 
 
+def apply_type(v):
+    # What filter arguments are allowed for this field type. Get them here
+    allowed_arguments = allowed_filter_arguments(R.prop('fields', v), R.prop('graphene_type', v)) if \
+        R.has('fields', v) else None
+
+    # If we have allowed arguments make args a 2 element array. The first element is always the graphene type to
+    # construct
+    args = [R.prop('type', v)] + ([allowed_arguments] if allowed_arguments else [])
+    t = R.prop_or(lambda typ: typ(), 'type_modifier', v)
+    return t(*args)
+
+
 def type_modify_fields(data_field_configs):
     """
         Converts json field configs based on if they have a type_modifier property. The type_modifier property
@@ -191,16 +203,9 @@ def type_modify_fields(data_field_configs):
     a type_modifier then it is called with field_config['type'] and its result is returned. Otherwise
     we simply call field_config['type']() to construct an instance of the type
     """
-
-    def apply_type(v):
-        allowed_arguments = allowed_filter_arguments(R.prop('fields', v), R.prop('graphene_type', v)) if \
-            R.has('fields', v) else None
-
-        args = [R.prop('type', v)] + ([allowed_arguments] if allowed_arguments else [])
-        return R.prop_or(lambda typ: typ(), 'type_modifier', v)(*args)
-
     return R.map_with_obj(
         # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
         # This all translates to Graphene.Field|List(type, [fields that can be queried])
         lambda k, v: apply_type(v),
-        data_field_configs)
+        data_field_configs
+    )

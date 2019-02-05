@@ -6,6 +6,7 @@ from graphql_jwt.decorators import login_required, staff_member_required
 from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser, user_fields
 from rescape_graphene.graphql_helpers.schema_helpers import allowed_read_fields, process_filter_kwargs, \
     allowed_filter_arguments
+from rescape_python_helpers import ramda as R
 
 
 class Query(ObjectType):
@@ -27,7 +28,7 @@ class Query(ObjectType):
     @login_required
     def resolve_current_user(self, info):
         context = info.context
-        user = get_user(context)
+        user = R.prop_or(None, 'user', context)
         if not user:
             raise Exception('Not logged in!')
 

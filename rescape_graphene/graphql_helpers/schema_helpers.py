@@ -357,7 +357,7 @@ def parse_django_class(model, field_dict, parent_type_classes=[]):
         # Only accept model fields that are defined in field_dict
         R.filter(
             lambda field: field.name in field_dict,
-            model._meta.fields
+            R.concat(model._meta.fields, model._meta.many_to_many)
         )
     ))
 
@@ -510,7 +510,7 @@ def process_filter_kwargs(model, kwargs):
         # Convert filters from _ to __
         R.map_keys_deep(
             lambda k, v: k.replace('_', '__')
-            if R.any_satisfy(lambda string: f'_{string}' in k, R.keys(FILTER_FIELDS))
+            if R.any_satisfy(lambda string: f'_{string}' in str(k), R.keys(FILTER_FIELDS))
             else k)
     )(kwargs)
 
@@ -538,9 +538,13 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud):
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :return:
     """
-    graphene_type = R.prop_or(None, 'type', field_config)
+
+    # Always favor the graphene_type that we specify in the field config. If it's not present use the django type
+    graphene_type = R.prop_or(R.prop_or(None, 'type', field_config), 'graphene_type', field_config)
+
     if not graphene_type:
-        raise Exception("No type parameter found on the field value. This usually means that a field was defined in the"
+        raise Exception("No graphene_type nor type parameter found on the field value."
+                        " This usually means that a field was defined in the"
                         " field_dict that has no corresponding django field. To define a field with no corresponding"
                         " Django field, you must give the field a type parameter that is set to a GraphneType subclass")
     graphene_type_modifier = R.prop_or(None, 'type_modifier', field_config)
@@ -604,7 +608,7 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
     # Example region = {id: 5} becomes region_id = 5
     # This assumes id is the pk
     key_to_modified_key_and_value = R.map_with_obj(
-        lambda key, value: {'%s_id' % key: R.prop('id', value)} if
+        lambda key, value: {f'{key}_id': R.prop('id', value)} if
         R.prop_or(False, 'django_type', fields_dict[key]) else
         # No Change
         {key: value},
@@ -810,20 +814,20 @@ def process_query_kwarg(model, key, value):
         # This is just one way of filtering json. We can also do it with the argument structure
         return R.compose(
             to_pairs,
-            #R.map_keys(lambda k: f'{k}__contains'),
             lambda dct: flatten_dct_until(dct, lambda key: not key.endswith('contains'), '__')
         )({key: value})
 
-    elif isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField)):
-        # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
-        related_model = model._meta._forward_fields_map[key].related_model
-        key_values = process_query_value(related_model, value)
-        return R.map(lambda inner_key_value: ['%s__%s' % (key, inner_key_value[0]), inner_key_value[1]], key_values)
-    elif isinstance(model._meta._forward_fields_map[key], (ManyToManyField)):
-        raise NotImplementedError("TODO need to implement stringify for ManyToMany")
+    elif R.has(key, model._meta._forward_fields_map):
+        # If it's a model key
+        if isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField)):
+            # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
+            related_model = model._meta._forward_fields_map[key].related_model
+            key_values = process_query_value(related_model, value)
+            return R.map(lambda inner_key_value: ['%s__%s' % (key, inner_key_value[0]), inner_key_value[1]], key_values)
+        elif isinstance(model._meta._forward_fields_map[key], (ManyToManyField)):
+            raise NotImplementedError("TODO need to implement stringify for ManyToMany")
 
     return [[key, value]]
-
 
 @R.curry
 def stringify_query_kwargs(model, kwargs):
