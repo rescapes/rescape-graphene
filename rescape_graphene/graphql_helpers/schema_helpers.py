@@ -433,7 +433,7 @@ def allowed_filter_pairs(field_name, graphene_type):
         # Make all the filter pairs for each key id: id_contains, id: id_in, etc
         # We could of course make this smarter to allow certain fields for certain types
         lambda filter_str, config: [
-            f'{field_name}_{filter_str}',
+            '%s_%s' % (field_name, filter_str),
             # If a type_modifier is needed for the filter type, such as a List constructor call it
             # with the field's type as an argument
             (config['type_modifier'] if R.has('type_modifier', config) else lambda t: t())(graphene_type)
@@ -510,7 +510,7 @@ def process_filter_kwargs(model, kwargs):
         # Convert filters from _ to __
         R.map_keys_deep(
             lambda k, v: k.replace('_', '__')
-            if R.any_satisfy(lambda string: f'_{string}' in str(k), R.keys(FILTER_FIELDS))
+            if R.any_satisfy(lambda string: '_%s' % string in str(k), R.keys(FILTER_FIELDS))
             else k)
     )(kwargs)
 
@@ -608,7 +608,7 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
     # Example region = {id: 5} becomes region_id = 5
     # This assumes id is the pk
     key_to_modified_key_and_value = R.map_with_obj(
-        lambda key, value: {f'{key}_id': R.prop('id', value)} if
+        lambda key, value: {'%s_id' % key: R.prop('id', value)} if
         R.prop_or(False, 'django_type', fields_dict[key]) else
         # No Change
         {key: value},
