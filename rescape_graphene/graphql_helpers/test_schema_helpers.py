@@ -1,5 +1,6 @@
 from rescape_graphene.graphql_helpers.schema_helpers import merge_data_fields_on_update
-from snapshottest import TestCase
+from snapshottest import TestCase, pytest
+
 
 class TestGrapheneHelpers(TestCase):
     def test_merge_data_fields_on_update(self):

@@ -622,27 +622,37 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
         field_name_to_value
     )
 
-    def key_value_based_on_unique_or_foreign(key):
+    def key_value_based_on_unique_or_foreign(all_present_keys, key):
         """
             Returns either a simple dict(key=value) for keys that must have unique values (e.g. id, key, OneToOne rel)
             Returns dict(default=dict(key=value)) for keys that need not have unique values
-        :param {String} key:
+        :param {String} all_present_keys All keys specified for the insert or update
+        :param {String} key: The key to test
         :return {dict}:
         """
         modified_key_value = key_to_modified_key_and_value[key]
         # non-defaults are for checking uniqueness and then using for update/insert
         # defaults are for updating/inserting
         # this matches Django Query's update_or_create
-        return modified_key_value \
-            if R.length(R.item_path_or([], [key, 'unique'], fields_dict)) \
-            else dict(defaults=modified_key_value)
+        return modified_key_value if \
+            R.contains('unique',  R.item_path_or([None], [key, 'unique'], fields_dict)) or \
+            R.all_satisfy(
+                # Are all unique keys in all_present_keys, meaning is the user trying to do a create/update
+                # by specifying a whole set of keys that are unique together
+                # If so, we can move these keys from defaults to the unique check
+                # TODO we shouldn't support this
+                lambda unique_key: R.contains(unique_key, R.concat(['unique'], all_present_keys)),
+                # Take the first unique list of the attribute if any
+                R.item_path_or([None], [key, 'unique', 0], fields_dict)
+            ) else \
+            dict(defaults=modified_key_value)
 
     # Forms a dict(
     #   unique_key1=value, unique_key2=value, ...,
     #   defaults=(non_unique_key1=value, non_unique_key2=value, ...)
     # )
     return R.merge_deep_all(R.map_with_obj_to_values(
-        lambda key, value: key_value_based_on_unique_or_foreign(key),
+        lambda key, value: key_value_based_on_unique_or_foreign(R.keys(field_name_to_value), key),
         field_name_to_value
     ))
 

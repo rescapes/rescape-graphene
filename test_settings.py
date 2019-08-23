@@ -151,7 +151,7 @@ TEMPLATES = [
     },
 ]
 
-LOG_PATH = os.path.join(BASE_DIR, "log/")
+LOG_PATH = '/usr/local/var/log'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': True,

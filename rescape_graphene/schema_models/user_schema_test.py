@@ -1,5 +1,7 @@
 import logging
 
+import pytest
+
 from sample_webapp.test_schema_helpers import assert_no_errors
 from rescape_graphene.testcases import client_for_testing
 from rescape_python_helpers import ramda as R
@@ -15,13 +17,15 @@ logger = logging.getLogger(__name__)
 omit_props = ['dateJoined']
 
 
+@pytest.mark.django_db
 class UserTypeCase(TestCase):
 
     def setUp(self):
         # Prevent a circular dependency
         from sample_webapp.sample_schema import schema
-        self.client = client_for_testing(schema)
-        #self.client.schema(schema)
+        admin, _ = User.objects.update_or_create(username="admin", defaults=dict(first_name='Ad', last_name='Min',
+                                                     password=make_password("cool", salt='not_random'), is_superuser=True))
+        self.client = client_for_testing(schema, admin)
         self.user, _ = User.objects.update_or_create(username="lion", first_name='Simba', last_name='The Lion',
                                       password=make_password("roar", salt='not_random'))
         User.objects.update_or_create(username="cat", first_name='Felix', last_name='The Cat',
@@ -31,7 +35,7 @@ class UserTypeCase(TestCase):
         values = dict(username=self.user.username, password='roar')
         result = graphql_authenticate_user(self.client, values)
         assert_no_errors(result)
-        auth_token = R.item_str_path('tokenAuth.token', result.data)
+        auth_token = R.item_str_path('data.tokenAuth.token', result)
         assert auth_token
         verify_result = graphql_verify_user(self.client, dict(token=auth_token))
         assert_no_errors(verify_result)
