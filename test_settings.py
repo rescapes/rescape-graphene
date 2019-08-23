@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 import datetime
 import os
 import sys
+from rescape_python_helpers import ramda as R
 
 TEST_RUNNER = 'snapshottest.django.TestRunner'
 TESTING = R.any_satisfy(lambda str: 'test' in str, sys.argv[1:2])
