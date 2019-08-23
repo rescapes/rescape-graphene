@@ -24,6 +24,7 @@ from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
 from .memoize import memoize
 
 logger = logging.getLogger('rescape_graphene')
+from django.conf import settings
 
 DENY = 'deny'
 # Indicates a CRUD operation is required to use this field
@@ -54,7 +55,8 @@ DELETE = 'delete'
 # From django-filters. Whenever graphene supports filtering without Relay we can get rid of this here
 # Educated guesss about what types for each to support. Django/Postgres might support fewer or more of these
 # combinations than I'm aware of
-FILTER_FIELDS = {
+# Skip if testing. These take forever
+FILTER_FIELDS = {} if settings.TESTING else {
     'year': dict(allowed_types=[graphene.Date, graphene.DateTime]),
     'month': dict(allowed_types=[graphene.Date, graphene.DateTime]),
     'day': dict(allowed_types=[graphene.Date, graphene.DateTime]),
@@ -634,17 +636,9 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
         # non-defaults are for checking uniqueness and then using for update/insert
         # defaults are for updating/inserting
         # this matches Django Query's update_or_create
+        # We don't bother with unique_together--it should be handled by the model's mutation handler
         return modified_key_value if \
-            R.contains('unique',  R.item_path_or([None], [key, 'unique'], fields_dict)) or \
-            R.all_satisfy(
-                # Are all unique keys in all_present_keys, meaning is the user trying to do a create/update
-                # by specifying a whole set of keys that are unique together
-                # If so, we can move these keys from defaults to the unique check
-                # TODO we shouldn't support this
-                lambda unique_key: R.contains(unique_key, R.concat(['unique'], all_present_keys)),
-                # Take the first unique list of the attribute if any
-                R.item_path_or([None], [key, 'unique', 0], fields_dict)
-            ) else \
+            R.contains('unique', R.item_path_or([None], [key, 'unique'], fields_dict)) else \
             dict(defaults=modified_key_value)
 
     # Forms a dict(

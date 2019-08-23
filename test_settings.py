@@ -11,8 +11,10 @@ https://docs.djangoproject.com/en/1.9/ref/settings/
 """
 import datetime
 import os
+import sys
 
 TEST_RUNNER = 'snapshottest.django.TestRunner'
+TESTING = R.any_satisfy(lambda str: 'test' in str, sys.argv[1:2])
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
