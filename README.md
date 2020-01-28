@@ -15,7 +15,7 @@ source ~/.virtualenvs/rescape-graphene/bin/activate
 If you don't have pur installed:
 pip install pur
 
-This updates requirments.txt to their latest version
+This updates requirements.txt to their latest version
 
 Install requirements with latest versions
 ```bash
