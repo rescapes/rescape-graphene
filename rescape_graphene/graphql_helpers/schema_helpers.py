@@ -675,16 +675,17 @@ def graphql_query(graphene_type, fields, query_name):
 
         # Map the field_type_lookup to the right graphene type, either a primitive like 'String' or a complex
         # read input type like 'FeatureCollectionDataTypeofFooTypeRelatedReadInputType'
-        variable_definitions = R.map_with_obj(
-            lambda k, v: field_type_lookup[k]._meta.name,
+        variable_definitions = R.map_key_values(
+            lambda k, v: [camelize(k, False), field_type_lookup[k]._meta.name],
             kwargs['variables']
         ) if R.has('variables', kwargs) else {}
 
+        # Form the key values, camelizing the keys to match what graphql expects
         formatted_definitions = R.join(
             ', ',
             R.values(
                 R.map_with_obj(
-                    lambda key, value: '$%s: %s!' % (key, value),
+                    lambda key, value: f'${camelize(key, False)}: {value}!',
                     variable_definitions
                 )
             )
@@ -707,8 +708,20 @@ def graphql_query(graphene_type, fields, query_name):
             dump_graphql_keys(field_overrides or fields)
         )))
 
-        logger.debug('Query: %s\nKwargs: %s' % (query, kwargs))
-        return client.execute(query, **kwargs)
+        # Update the variable names to have camel case instead of pythonic slugs
+        camelized_kwargs = R.fake_lens_path_set(
+            ['variables'],
+            R.map_keys(
+                lambda key: camelize(key, False),
+                R.prop_or({}, 'variables', kwargs)
+            ),
+            kwargs
+        )
+        logger.debug('Query: %s\nKwargs: %s' % (query, camelized_kwargs))
+        return client.execute(
+            query,
+            **camelized_kwargs
+        )
 
     return form_query
 
