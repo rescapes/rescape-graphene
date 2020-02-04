@@ -1,4 +1,5 @@
 import inspect
+import json
 import logging
 import sys
 from decimal import Decimal
@@ -14,7 +15,7 @@ from rescape_python_helpers import ramda as R
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
-    BigIntegerField, NullBooleanField
+    BigIntegerField, NullBooleanField, Q
 from graphene import Scalar, InputObjectType, ObjectType
 from graphql.language import ast
 from inflection import camelize
@@ -56,50 +57,68 @@ DELETE = 'delete'
 # Educated guesss about what types for each to support. Django/Postgres might support fewer or more of these
 # combinations than I'm aware of
 # Skip if testing. These take forever
-FILTER_FIELDS = {} if settings.TESTING else {
-    'year': dict(allowed_types=[graphene.Date, graphene.DateTime]),
-    'month': dict(allowed_types=[graphene.Date, graphene.DateTime]),
-    'day': dict(allowed_types=[graphene.Date, graphene.DateTime]),
-    'week_day': dict(allowed_types=[graphene.Date, graphene.DateTime]),
-    'hour': dict(allowed_types=[graphene.DateTime]),
-    'minute': dict(allowed_types=[graphene.DateTime]),
-    'second': dict(allowed_types=[graphene.DateTime]),
+FILTER_FIELDS = R.compose(
+    # Create not versions of each. This is a pseudo syntax not supported by Django. Django uses exclude() or ~Q(expr).
+    # We can't create an equivalent here with keys, so we use _not and convert it to ~Q(expr) later
+    lambda pairs: R.from_pairs(pairs),
+    lambda pairs: R.chain(lambda key_value: [list(key_value), [f'{key_value[0]}_not', key_value[1]]], pairs),
+    lambda dct: R.to_pairs(dct),
 
-    # standard lookups
-    # 'exact': dict(), # this is the default
-    'iexact': dict(),
-    'contains': dict(),
-    'icontains': dict(),
-    'in': dict(type_modifier=lambda typ: graphene.List(typ)),
-    'gt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
-    'gte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
-    'lt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
-    'lte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
-    'startswith': dict(allowed_types=[graphene.String]),
-    'istartswith': dict(allowed_types=[graphene.String]),
-    'endswith': dict(allowed_types=[graphene.String]),
-    'iendswith': dict(allowed_types=[graphene.String]),
-    # Range expects a 2 item tuple, so give it a list
-    'range': dict(type_modifier=lambda typ: graphene.List(typ)),
-    'isnull': dict(),
-    'regex': dict(allowed_types=[graphene.String]),
-    'iregex': dict(allowed_types=[graphene.String]),
-    'search': dict(allowed_types=[graphene.String]),
+    R.if_else(
+        lambda settings: settings.TESTING,
+        # Minimum set for debugging speed
+        lambda _: {
+            'contains': dict(),
+            'icontains': dict()
+        },
+        lambda _: {
+            'year': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+            'month': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+            'day': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+            'week_day': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+            'hour': dict(allowed_types=[graphene.DateTime]),
+            'minute': dict(allowed_types=[graphene.DateTime]),
+            'second': dict(allowed_types=[graphene.DateTime]),
 
-    # postgres lookups
-    'contained_by': dict(),
-    # Date overlap
-    'overlap': dict(allowed_types=[graphene.Date, graphene.DateTime]),
-    # These are probably for json types so maybe useful
-    'has_key': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
-    'has_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
-    'has_any_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
-    # groups of 3 characters for similarity recognition
-    'trigram_similar': dict(allowed_types=[graphene.String])
-}
+            # standard lookups
+            # 'exact': dict(), # this is the default
+            'iexact': dict(),
+            'contains': dict(),
+            'icontains': dict(),
+            'in': dict(type_modifier=lambda typ: graphene.List(typ)),
+            'gt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
+            'gte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
+            'lt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
+            'lte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
+            'startswith': dict(allowed_types=[graphene.String]),
+            'istartswith': dict(allowed_types=[graphene.String]),
+            'endswith': dict(allowed_types=[graphene.String]),
+            'iendswith': dict(allowed_types=[graphene.String]),
+            # Range expects a 2 item tuple, so give it a list
+            'range': dict(type_modifier=lambda typ: graphene.List(typ)),
+            'isnull': dict(),
+            'regex': dict(allowed_types=[graphene.String]),
+            'iregex': dict(allowed_types=[graphene.String]),
+            'search': dict(allowed_types=[graphene.String]),
+
+            # postgres lookups
+            'contained_by': dict(),
+            # Date overlap
+            'overlap': dict(allowed_types=[graphene.Date, graphene.DateTime]),
+            # These are probably for json types so maybe useful
+            'has_key': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
+            'has_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
+            'has_any_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
+            # groups of 3 characters for similarity recognition
+            'trigram_similar': dict(allowed_types=[graphene.String])
+        }
+    )
+)(settings)
 
 
 # https://github.com/graphql-python/graphene-django/issues/124
+
+
 class ErrorMiddleware(object):
     def on_error(self, error):
         err = sys.exc_info()
@@ -433,14 +452,13 @@ def allowed_filter_pairs(field_name, graphene_type):
     """
     return R.map_with_obj_to_values(
         # Make all the filter pairs for each key id: id_contains, id: id_in, etc
-        # We could of course make this smarter to allow certain fields for certain types
         lambda filter_str, config: [
             '%s_%s' % (field_name, filter_str),
             # If a type_modifier is needed for the filter type, such as a List constructor call it
             # with the field's type as an argument
             (config['type_modifier'] if R.has('type_modifier', config) else lambda t: t())(graphene_type)
         ],
-        # Only allow filters compient with the type of pair[1]
+        # Only allow filters compliant with the type of pair[1]
         R.filter_dict(
             lambda keyvalue: not R.has('allowed_types', keyvalue[1]) or R.any_satisfy(
                 lambda typ: issubclass(graphene_type, typ), keyvalue[1]['allowed_types']
@@ -480,7 +498,9 @@ def add_filters(argument_dict):
 
 def allowed_filter_arguments(fields_dict, graphene_type):
     """
-        Like allowed_query_and_read_arguments but only used for arguments and adds filter arguments like id_contains
+        Like allowed_query_and_read_arguments but only used for arguments and adds filter variables like id_contains.
+        Note that django needs __ so these are converted for resolvers. The graphql interface converts them to
+        camel case
     :param fields_dict: The fields_dict for the Django model
     :param graphen_type: Type used for embedded input class naming
     :return: dict of field keys and there graphene type, either a primitive or input type
@@ -504,16 +524,18 @@ def process_filter_kwargs(model, kwargs):
         Converts filter names for resolvers. They come in with an _ but need __ to match django's query language
     :param model: The django model--used to flatten the objects properly
     :param kwargs:
-    :return: kwargs with FILTER_FIELDS keys modified to have __
+    :return: {args, kwargs} kwargs with FILTER_FIELDS keys modified to have __ and args that are expressions
+    that were converted to Q expressions
     """
     return R.compose(
-        stringify_query_kwargs(model),
+        lambda kwrgs: flatten_query_kwargs(model, kwrgs),
 
         # Convert filters from _ to __
         R.map_keys_deep(
             lambda k, v: k.replace('_', '__')
             if R.any_satisfy(lambda string: '_%s' % string in str(k), R.keys(FILTER_FIELDS))
-            else k)
+            else k
+        )
     )(kwargs)
 
 
@@ -663,7 +685,7 @@ def graphql_query(graphene_type, fields, query_name):
     The only key allowed is variables, which contains param key values. Example: variables={'user': 'Peter'}
     This results in query whatever(id: String!) { query_name(id: id) ... }
     """
-    field_type_lookup = allowed_read_fields(fields, graphene_type)
+    field_type_lookup = allowed_filter_arguments(fields, graphene_type)
 
     def form_query(client, field_overrides={}, **kwargs):
         """
@@ -717,7 +739,7 @@ def graphql_query(graphene_type, fields, query_name):
             ),
             kwargs
         )
-        logger.debug('Query: %s\nKwargs: %s' % (query, camelized_kwargs))
+        logger.debug(f'Query: {query}\nKwargs: {R.dump_json(camelized_kwargs)}')
         return client.execute(
             query,
             **camelized_kwargs
@@ -807,11 +829,16 @@ def process_query_value(model, value_dict):
     :param model:
     :param {dict} value: Dict of key values querying the related model. This could have embedded types as well.
     E.g. model User value {username: 'foo'} or model Group value {name: 'goo', user: {username: 'foo'}}
-    :return: A flat list of key values representing the value dict, including resolved deep values
+    :return: A list of Q expressions
     """
-    return R.chain(R.identity,
-                   R.map_with_obj_to_values(lambda key, inner_value: process_query_kwarg(model, key, inner_value),
-                                            value_dict))
+    return R.chain(
+        R.identity,
+        # Creates a 2-D array of Q expressions
+        R.map_with_obj_to_values(
+            lambda key, inner_value: process_query_kwarg(model, key, inner_value),
+            value_dict
+        )
+    )
 
 
 def process_query_kwarg(model, key, value):
@@ -823,39 +850,47 @@ def process_query_kwarg(model, key, value):
         model User, key: 'user', value: {id: 1, groups: [{id: 2}, {name: 'fellas'}]}. This requires using __in
         for the django key and other fancy stuff
     :param model:
-    :param key:
-    :param value:
-    :return: Flat list of pairs, where first value of pairs is a django query string like 'foo__car' or 'foo__contains'
-     and second is value like 2
+    :param {String} key: Key compatible with django filtering, except special case {key}__not which is converted
+    to ~Q({key}={value}
+    :param value: The value, can be a scalar or dict
+    :return: A list of Q expressions like Q(x__y=1) and ~Q(x__contains='adf')
     """
 
-    if key.endswith('contains'):
+    if key.endswith('__contains'):
         # Don't modify json contains searches
-        return [[key, value]]
+        # TODO this doesn't make sense because condition below is supposed to handle it
+        return [Q(**{key: value})]
+    elif key.endswith('__not'):
+        # If the key ends in not it tells us to convert to a ~Q(key) expression
+        k = key.replace('__not', '')
+        return [~Q(**{k: value})]
     if isinstance(R.prop_or(None, key, model._meta._forward_fields_map), (JSONField,)):
         # Small correction here to change the data filter to data__contains to handle any json
         # https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
         # This is just one way of filtering json. We can also do it with the argument structure
         return R.compose(
-            to_pairs,
+            lambda dct: R.map_with_obj_to_values(lambda key, value: Q(**{key: value})),
             lambda dct: flatten_dct_until(dct, lambda key: not key.endswith('contains'), '__')
         )({key: value})
-
     elif R.has(key, model._meta._forward_fields_map):
         # If it's a model key
         if isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField)):
             # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
             related_model = model._meta._forward_fields_map[key].related_model
-            key_values = process_query_value(related_model, value)
-            return R.map(lambda inner_key_value: ['%s__%s' % (key, inner_key_value[0]), inner_key_value[1]], key_values)
+            q_expressions = process_query_value(related_model, value)
+            return R.map(
+                # TODO we assume simple Q expressions with ony one child at children[0]
+                lambda q_expression: Q(**{f'{key}__{q_expression.children[0][0]}': q_expression.children[0][1]}),
+                q_expressions
+            )
         elif isinstance(model._meta._forward_fields_map[key], (ManyToManyField)):
             raise NotImplementedError("TODO need to implement stringify for ManyToMany")
 
-    return [[key, value]]
+    return [Q(**{key: value})]
 
 
 @R.curry
-def stringify_query_kwargs(model, kwargs):
+def flatten_query_kwargs(model, kwargs):
     """
         This handles resolving relationships like {user: {id: 1, group: {id: 2}}} in the kwargs by converting them
         to user__id==1 and user__group__id==2. It also adds contains to the end of json objects so that arrays
@@ -863,12 +898,17 @@ def stringify_query_kwargs(model, kwargs):
         TODO it doesn't handle many-to-many yet. I need to write that
     :param data_field_name: The name of the data field, e.g. 'data'
     :param kwargs: The query kargs
-    :return: {dict} The corrected kwargs
+    :return: A list of Django filter Q expressions
     """
-    # Since each process-query_kwargs returns an array of one or more pairs (due to potential recursion), we have
-    # to take the values of R.map_with_obj and then flatten those values together and finally convert them from pairs to a dict
-    return R.from_pairs(
-        R.flatten(R.values(R.map_with_obj(lambda key, value: process_query_kwarg(model, key, value), kwargs))))
+    return R.chain(
+        R.identity,
+        R.values(
+            R.map_with_obj(
+                lambda key, value: process_query_kwarg(model, key, value),
+                kwargs
+            )
+        )
+    )
 
 
 def merge_data_fields_on_update(data_fields, existing_instance, data):

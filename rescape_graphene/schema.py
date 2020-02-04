@@ -22,8 +22,8 @@ class Query(ObjectType):
 
     @staff_member_required
     def resolve_users(self, info, **kwargs):
-        modified_kwargs = process_filter_kwargs(get_user_model(), kwargs)
-        return get_user_model().objects.filter(**modified_kwargs)
+        q_expressions = process_filter_kwargs(get_user_model(), kwargs)
+        return get_user_model().objects.filter(*q_expressions)
 
     @login_required
     def resolve_current_user(self, info):

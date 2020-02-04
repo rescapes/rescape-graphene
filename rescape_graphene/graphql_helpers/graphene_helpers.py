@@ -107,6 +107,8 @@ def quote(value, tab=-1):
         return quote_dict(value, tab + 1)
     elif isinstance(value, (list, tuple)):
         return quote_list(value, tab + 1)
+    elif isinstance(value, (bool)):
+        return str(value).lower()
     else:
         return quote_str(value)
 

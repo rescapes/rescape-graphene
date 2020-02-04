@@ -15,7 +15,7 @@ from rescape_graphene.schema_models.user_schema import UserType, CreateUser, Upd
 from rescape_graphene.graphql_helpers.schema_helpers import REQUIRE, \
     merge_with_django_properties, guess_update_or_create, \
     CREATE, UPDATE, input_type_parameters_for_update_or_create, graphql_update_or_create, graphql_query, \
-    input_type_fields, DENY, stringify_query_kwargs, IGNORE, allowed_filter_arguments
+    input_type_fields, DENY, flatten_query_kwargs, IGNORE, allowed_filter_arguments
 from sample_webapp.models import Foo
 
 foo_data_fields = dict(

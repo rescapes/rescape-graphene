@@ -94,7 +94,7 @@ def model_resolver_for_dict_field(model_class):
     :return:
     """
 
-    from rescape_graphene.graphql_helpers.schema_helpers import stringify_query_kwargs
+    from rescape_graphene.graphql_helpers.schema_helpers import flatten_query_kwargs
 
     def _model_resolver_for_dict_field(resource, context, **kwargs):
         field_name = underscore(context.field_name)
@@ -106,8 +106,9 @@ def model_resolver_for_dict_field(model_class):
         # Now filter based on any query arguments beyond id. If it doesn't match we also return None
         return first(model_class.objects.filter(
             **dict(
-                id=id,
-                **stringify_query_kwargs(model_class, kwargs)
+                # These are Q expressions
+                *flatten_query_kwargs(model_class, kwargs),
+                id=id
             )
         ), None)
 

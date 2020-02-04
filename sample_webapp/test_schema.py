@@ -43,7 +43,6 @@ def smart_execute(schema, *args, **kwargs):
 
 @pytest.mark.django_db
 class TestSchema(JSONWebTokenTestCase, TestCase):
-
     client = None
 
     def setUp(self):
@@ -71,20 +70,21 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
         )
         self.client.authenticate(self.lion)
 
-    # We need to mock a Resuest in the test client for this to work
-    #def test_auth(self):
-    #    authorization = grapqhl_authorization_mutation(self.client, dict(username='test', password='testpass'))
-    #    assert authorization
-
     def test_query(self):
         user_results = graphql_query_users(self.client)
         assert not R.prop('errors', user_results), R.dump_json(R.prop('errors', user_results))
         assert 2 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'users'], user_results)))
 
         # Query using for foos based on the related User
-        foo_results = graphql_query_foos(self.client,
-                                         variables=dict(user=R.pick(['id'], self.lion.__dict__))
-                                         )
+        foo_results = graphql_query_foos(
+            self.client,
+            variables=dict(
+                user=R.pick(['id'], self.lion.__dict__),
+                # Test filters
+                name_contains='oo',
+                name_contains_not='jaberwaki'
+            )
+        )
         assert not R.prop('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
         assert 1 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'foos'], foo_results)))
         # Make sure the Django instance in the json blob was resolved

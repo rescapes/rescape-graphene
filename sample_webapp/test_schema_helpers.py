@@ -6,7 +6,7 @@ from sample_webapp.sample_schema import FooType
 
 from sample_webapp.sample_schema import schema, foo_fields
 from rescape_graphene.graphql_helpers.schema_helpers import allowed_read_fields, input_type_fields, CREATE, UPDATE, \
-    input_type_parameters_for_update_or_create
+    input_type_parameters_for_update_or_create, allowed_filter_arguments
 from snapshottest import TestCase
 from rescape_python_helpers import ramda as R
 
@@ -19,9 +19,12 @@ class SchemaHelpersTypeCase(TestCase):
     def setUp(self):
         self.client = client_for_testing(schema)
 
-    # context_value={'user': 'Peter'}
-    # root_value={'user': 'Peter'}
-    # variables={'user': 'Peter'}
+    def test_variable_fields(self):
+        # Make sure we generate the variable and the filters
+        self.assertTrue(R.contains('key', list(allowed_filter_arguments(foo_fields, FooType))))
+        self.assertTrue(R.contains('key_contains', list(allowed_filter_arguments(foo_fields, FooType))))
+        self.assertTrue(R.contains('key_contains_not', list(allowed_filter_arguments(foo_fields, FooType))))
+
     def test_query_fields(self):
         self.assertMatchSnapshot(list(R.keys(allowed_read_fields(user_fields, UserType))))
         self.assertMatchSnapshot(list(R.keys(allowed_read_fields(foo_fields, UserType))))

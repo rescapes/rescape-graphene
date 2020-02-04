@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'sample_webapp',
     'corsheaders',
-    'graphene_django'
+    'graphene_django',
 ]
 
 STATIC_URL = '/static/'
@@ -54,8 +54,6 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # After django.contrib.auth.middleware.AuthenticationMiddleware...
-    'graphql_jwt.middleware.JSONWebTokenMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware'
 ]
