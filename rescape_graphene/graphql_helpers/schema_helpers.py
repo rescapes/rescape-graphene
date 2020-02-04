@@ -81,7 +81,7 @@ FILTER_FIELDS = R.compose(
             'second': dict(allowed_types=[graphene.DateTime]),
 
             # standard lookups
-            # 'exact': dict(), # this is the default
+            'exact': dict(), # this is the default, but keep so we can do negative queries, i.e. exact__not
             'iexact': dict(),
             'contains': dict(),
             'icontains': dict(),
