@@ -868,7 +868,7 @@ def process_query_kwarg(model, key, value):
         # https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
         # This is just one way of filtering json. We can also do it with the argument structure
         return R.compose(
-            lambda dct: R.map_with_obj_to_values(lambda key, value: Q(**{key: value})),
+            lambda dct: R.map_with_obj_to_values(lambda key, value: Q(**{key: value}), dct),
             lambda dct: flatten_dct_until(dct, lambda key: not key.endswith('contains'), '__')
         )({key: value})
     elif R.has(key, model._meta._forward_fields_map):
