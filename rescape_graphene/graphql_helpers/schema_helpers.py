@@ -524,8 +524,7 @@ def process_filter_kwargs(model, kwargs):
         Converts filter names for resolvers. They come in with an _ but need __ to match django's query language
     :param model: The django model--used to flatten the objects properly
     :param kwargs:
-    :return: {args, kwargs} kwargs with FILTER_FIELDS keys modified to have __ and args that are expressions
-    that were converted to Q expressions
+    :return: list of Q expressions representing each kwarg
     """
     return R.compose(
         lambda kwrgs: flatten_query_kwargs(model, kwrgs),
