@@ -13,6 +13,8 @@ from ..graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, C
     guess_update_or_create, graphql_update_or_create, graphql_query
 
 class UserType(DjangoObjectType):
+    id = graphene.Int(source='pk')
+
     class Meta:
         model = get_user_model()
 
