@@ -81,7 +81,7 @@ FILTER_FIELDS = R.compose(
             'second': dict(allowed_types=[graphene.DateTime]),
 
             # standard lookups
-            'exact': dict(), # this is the default, but keep so we can do negative queries, i.e. exact__not
+            'exact': dict(),  # this is the default, but keep so we can do negative queries, i.e. exact__not
             'iexact': dict(),
             'contains': dict(),
             'icontains': dict(),
@@ -613,6 +613,24 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[]):
     )
 
 
+def key_value_based_on_unique_or_foreign(key_to_modified_key_and_value, fields_dict, all_present_keys, key):
+    """
+        Returns either a simple dict(key=value) for keys that must have unique values (e.g. id, key, OneToOne rel)
+        Returns dict(default=dict(key=value)) for keys that need not have unique values
+    :param {String} all_present_keys All keys specified for the insert or update
+    :param {String} key: The key to test
+    :return {dict}:
+    """
+    modified_key_value = key_to_modified_key_and_value[key]
+    # non-defaults are for checking uniqueness and then using for update/insert
+    # defaults are for updating/inserting
+    # this matches Django Query's update_or_create
+    # We don't bother with unique_together--it should be handled by the model's mutation handler
+    return modified_key_value if \
+        R.contains('unique', R.item_path_or([None], [key, 'unique'], fields_dict)) else \
+        dict(defaults=modified_key_value)
+
+
 def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value):
     """
         Returns the input_type fields for a mutation class in the form
@@ -630,18 +648,17 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
 
     if R.has('id', field_name_to_value):
         # If we are doing an update with an id then the only value that doesn't go in defaults is id
-        key_to_modified_key_and_value = R.map_with_obj(
-            lambda key, value: {'%s_id' % key: R.prop('id', value)} if
+        key_to_modified_key_and_value = R.map_key_values(
+            lambda key, value: [f'{key}_id', R.prop('id', value)] if
             R.prop_or(False, 'django_type', fields_dict[key]) else
             # No Change
-            {key: value},
+            [key, value],
             R.omit(['id'], field_name_to_value)
         )
         return dict(
             id=R.getitem('id', field_name_to_value),
             defaults=key_to_modified_key_and_value
         )
-
     else:
         # Otherwise if we are creating or might be updating because we match a unique group of fields
         # TODO we really shouldn't allow updating without an id. Matching a unique group of fields without an id should be an error
@@ -655,32 +672,19 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
             {key: value},
             field_name_to_value
         )
-
-    def key_value_based_on_unique_or_foreign(all_present_keys, key):
-        """
-            Returns either a simple dict(key=value) for keys that must have unique values (e.g. id, key, OneToOne rel)
-            Returns dict(default=dict(key=value)) for keys that need not have unique values
-        :param {String} all_present_keys All keys specified for the insert or update
-        :param {String} key: The key to test
-        :return {dict}:
-        """
-        modified_key_value = key_to_modified_key_and_value[key]
-        # non-defaults are for checking uniqueness and then using for update/insert
-        # defaults are for updating/inserting
-        # this matches Django Query's update_or_create
-        # We don't bother with unique_together--it should be handled by the model's mutation handler
-        return modified_key_value if \
-            R.contains('unique', R.item_path_or([None], [key, 'unique'], fields_dict)) else \
-            dict(defaults=modified_key_value)
-
-    # Forms a dict(
-    #   unique_key1=value, unique_key2=value, ...,
-    #   defaults=(non_unique_key1=value, non_unique_key2=value, ...)
-    # )
-    return R.merge_deep_all(R.map_with_obj_to_values(
-        lambda key, value: key_value_based_on_unique_or_foreign(R.keys(field_name_to_value), key),
-        field_name_to_value
-    ))
+        # Forms a dict(
+        #   unique_key1=value, unique_key2=value, ...,
+        #   defaults=(non_unique_key1=value, non_unique_key2=value, ...)
+        # )
+        return R.merge_deep_all(R.map_with_obj_to_values(
+            lambda key, value: key_value_based_on_unique_or_foreign(
+                key_to_modified_key_and_value,
+                fields_dict,
+                R.keys(field_name_to_value),
+                key
+            ),
+            field_name_to_value
+        ))
 
 
 @R.curry

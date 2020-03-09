@@ -101,14 +101,15 @@ def quote(value, tab=-1):
     :param value:
     :return:
     """
-    if isinstance(value, (numbers.Number)):
+    if isinstance(value, (bool)):
+        # Python believes bools are numbers, so list this first
+        return str(value).lower()
+    elif isinstance(value, (numbers.Number)):
         return value
     elif isinstance(value, (dict)):
         return quote_dict(value, tab + 1)
     elif isinstance(value, (list, tuple)):
         return quote_list(value, tab + 1)
-    elif isinstance(value, (bool)):
-        return str(value).lower()
     else:
         return quote_str(value)
 
