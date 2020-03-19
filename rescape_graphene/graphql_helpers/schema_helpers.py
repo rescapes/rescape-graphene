@@ -693,7 +693,8 @@ def related_object_id_if_django_type(fields_dict, key, value):
 
     except Exception as e:
         logging.error(
-            f"Proplem with related types for key {key}, value {json.dump(value)}. Are you missing a related type id {json.dump(field_name_to_value)}")
+            f'Problem with related types for key {key}, value {json.dumps(value)}. Are you missing a related type id {json.dumps(field_name_to_value)}'
+        )
         raise e
 
 
