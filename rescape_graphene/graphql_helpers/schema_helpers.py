@@ -646,13 +646,11 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
     :return:
     """
 
+    _related_object_id_if_django_type = related_object_id_if_django_type(fields_dict)
     if R.has('id', field_name_to_value):
         # If we are doing an update with an id then the only value that doesn't go in defaults is id
-        key_to_modified_key_and_value = R.map_key_values(
-            lambda key, value: [f'{key}_id', R.prop('id', value)] if
-            R.prop_or(False, 'django_type', fields_dict[key]) else
-            # No Change
-            [key, value],
+        key_to_modified_key_and_value =  R.map_with_obj(
+            _related_object_id_if_django_type,
             R.omit(['id'], field_name_to_value)
         )
         return dict(
@@ -666,12 +664,10 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
         # Example region = {id: 5} becomes region_id = 5
         # This assumes id is the pk
         key_to_modified_key_and_value = R.map_with_obj(
-            lambda key, value: {'%s_id' % key: R.prop('id', value)} if
-            R.prop_or(False, 'django_type', fields_dict[key]) else
-            # No Change
-            {key: value},
+            _related_object_id_if_django_type,
             field_name_to_value
         )
+
         # Forms a dict(
         #   unique_key1=value, unique_key2=value, ...,
         #   defaults=(non_unique_key1=value, non_unique_key2=value, ...)
@@ -685,6 +681,26 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
             ),
             field_name_to_value
         ))
+
+
+@R.curry
+def related_object_id_if_django_type(fields_dict, key, value):
+    """
+        Determines if the key represents a property that is a djnago type and returns the id of the value if so
+    :param fields_dict: Contains keys that might have a value with a 'django_type' property
+    :param key:  They current key
+    :param value:  They current value
+    :return:  {{key}_id, value.id} if the key represents a django type
+    """
+    try:
+        return {f'{key}_id': R.prop('id', value)} \
+            if R.prop_or(False, 'django_type', fields_dict[key]) \
+            else {key: value}
+
+    except Exception as e:
+        logging.error(
+            f'Proplem with related types for key {key}, value {json.dump(value)}. Are you missing a related type id {json.dump(field_name_to_value)} ')
+        raise e
 
 
 @R.curry
