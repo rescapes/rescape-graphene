@@ -613,11 +613,10 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[]):
     )
 
 
-def key_value_based_on_unique_or_foreign(key_to_modified_key_and_value, fields_dict, all_present_keys, key):
+def key_value_based_on_unique_or_foreign(key_to_modified_key_and_value, fields_dict, key):
     """
         Returns either a simple dict(key=value) for keys that must have unique values (e.g. id, key, OneToOne rel)
         Returns dict(default=dict(key=value)) for keys that need not have unique values
-    :param {String} all_present_keys All keys specified for the insert or update
     :param {String} key: The key to test
     :return {dict}:
     """
@@ -646,10 +645,8 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
     :return:
     """
 
-    _related_object_id_if_django_type = related_object_id_if_django_type(fields_dict)
     # Convert foreign key dicts to their id, since Django expects the foreign key as an saved instance or id
-    # Example region = {id: 5} becomes region_id = 5
-    # This assumes id is the pk
+    _related_object_id_if_django_type = related_object_id_if_django_type(fields_dict)
     key_to_modified_key_and_value = R.map_with_obj(
         _related_object_id_if_django_type,
         R.omit(['id'], field_name_to_value)
@@ -658,7 +655,7 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
         # If we are doing an update with an id then the only value that doesn't go in defaults is id
         return dict(
             id=R.getitem('id', field_name_to_value),
-            defaults=key_to_modified_key_and_value
+            defaults=R.merge_all(R.values(key_to_modified_key_and_value))
         )
     else:
         # Otherwise if we are creating or might be updating because we match a unique group of fields
@@ -672,7 +669,6 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
             lambda key, value: key_value_based_on_unique_or_foreign(
                 key_to_modified_key_and_value,
                 fields_dict,
-                R.keys(field_name_to_value),
                 key
             ),
             field_name_to_value
@@ -683,6 +679,8 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
 def related_object_id_if_django_type(fields_dict, key, value):
     """
         Determines if the key represents a property that is a djnago type and returns the id of the value if so
+        Convert foreign key dicts to their id, since Django expects the foreign key as an saved instance or id
+        Example region = {id: 5} becomes region_id = 5
     :param fields_dict: Contains keys that might have a value with a 'django_type' property
     :param key:  They current key
     :param value:  They current value
@@ -695,7 +693,7 @@ def related_object_id_if_django_type(fields_dict, key, value):
 
     except Exception as e:
         logging.error(
-            f'Proplem with related types for key {key}, value {json.dump(value)}. Are you missing a related type id {json.dump(field_name_to_value)} ')
+            f"Proplem with related types for key {key}, value {json.dump(value)}. Are you missing a related type id {json.dump(field_name_to_value)}")
         raise e
 
 
