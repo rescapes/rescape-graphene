@@ -647,27 +647,23 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
     """
 
     _related_object_id_if_django_type = related_object_id_if_django_type(fields_dict)
+    # Convert foreign key dicts to their id, since Django expects the foreign key as an saved instance or id
+    # Example region = {id: 5} becomes region_id = 5
+    # This assumes id is the pk
+    key_to_modified_key_and_value = R.map_with_obj(
+        _related_object_id_if_django_type,
+        R.omit(['id'], field_name_to_value)
+    )
     if R.has('id', field_name_to_value):
         # If we are doing an update with an id then the only value that doesn't go in defaults is id
-        key_to_modified_key_and_value =  R.map_with_obj(
-            _related_object_id_if_django_type,
-            R.omit(['id'], field_name_to_value)
-        )
         return dict(
             id=R.getitem('id', field_name_to_value),
             defaults=key_to_modified_key_and_value
         )
     else:
         # Otherwise if we are creating or might be updating because we match a unique group of fields
-        # TODO we really shouldn't allow updating without an id. Matching a unique group of fields without an id should be an error
-        # Convert foreign key dicts to their id, since Django expects the foreign key as an saved instance or id
-        # Example region = {id: 5} becomes region_id = 5
-        # This assumes id is the pk
-        key_to_modified_key_and_value = R.map_with_obj(
-            _related_object_id_if_django_type,
-            field_name_to_value
-        )
-
+        # TODO we really shouldn't allow updating without an id.
+        # Matching a unique group of fields without an id should be an error
         # Forms a dict(
         #   unique_key1=value, unique_key2=value, ...,
         #   defaults=(non_unique_key1=value, non_unique_key2=value, ...)
