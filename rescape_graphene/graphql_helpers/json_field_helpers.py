@@ -66,7 +66,8 @@ def resolver_for_dict_list(resource, context, **kwargs):
     """
     selections = resolve_selections(context)
     field_name = context.field_name
-    value = R.prop_or([], field_name, resource)
+    # Value defaults to None. Empty is not the same as None
+    value = R.prop_or(None, field_name, resource)
 
     return R.map(
         lambda data: pick_selections(selections, data),
@@ -78,7 +79,7 @@ def resolver_for_dict_list(resource, context, **kwargs):
             lambda data: R.dict_matches_params_deep(kwargs, data),
             value
         )
-    ) if value else None
+    ) if value else value
 
 
 def model_resolver_for_dict_field(model_class):
