@@ -1,5 +1,6 @@
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from graphene import Int, Boolean, ObjectType, List
+
 from rescape_graphene import DENY
 
 
@@ -41,16 +42,22 @@ def create_paginated_type_mixin(model_object_type, model_object_type_fields):
     :param model_object_type_fields: The fields of the model_object_type, e.g. location_fields
     :return: An object containing {type: The class, fields: The field}
     """
-    class PaginatedTypeMixin(ObjectType):
-        """
-            Mixin for adding pagination to any Graphene Type
-        """
-        page_size = Int()
-        page = Int()
-        pages = Int()
-        has_next = Boolean()
-        has_prev = Boolean()
-        objects = List(model_object_type)
+
+    """
+        Mixin for adding pagination to any Graphene Type
+    """
+    paginated_type_mixin = type(
+        f'PaginatedTypeMixinFor{model_object_type.__name__}',
+        (ObjectType,),
+        dict(
+            page_size=Int(),
+            page=Int(),
+            pages=Int(),
+            has_next=Boolean(),
+            has_prev=Boolean(),
+            objects=List(model_object_type),
+        )
+    )
 
     paginated_fields = dict(
         page_size=dict(type=Int, graphene_type=Int, create=DENY, update=DENY),
@@ -66,4 +73,4 @@ def create_paginated_type_mixin(model_object_type, model_object_type_fields):
         )
     )
 
-    return dict(type=PaginatedTypeMixin, fields=paginated_fields)
+    return dict(type=paginated_type_mixin, fields=paginated_fields)
