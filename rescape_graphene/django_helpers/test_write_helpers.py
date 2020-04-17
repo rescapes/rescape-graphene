@@ -19,14 +19,14 @@ class WriteHelpersTestCase(TestCase):
                                                   password=make_password("meow", salt='not_random'))
 
     def test_increment_prop_until_unique(self):
-        user_dict = increment_prop_until_unique(get_user_model(), None, 'username',
+        user_dict = increment_prop_until_unique(get_user_model(), None, 'username', {},
                                     dict(username='cat', first_name='Fluffy', last_name='Mcfluffigan',
                                          password=make_password("purr", salt='not_random')), {})
         user, created = get_user_model().objects.update_or_create(**user_dict)
         assert user.username == 'cat2'
 
     def test_enforce_unique_props(self):
-        user_dict = increment_prop_until_unique(get_user_model(), None, 'username',
+        user_dict = increment_prop_until_unique(get_user_model(), None, 'username', {},
                                     dict(username='cat', first_name='Fluffy', last_name='Mcfluffigan',
                                          password=make_password("purr", salt='not_random')), {})
         modifed_user_dict = enforce_unique_props(user_fields, user_dict)
