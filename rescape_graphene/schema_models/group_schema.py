@@ -19,7 +19,7 @@ class GroupType(DjangoObjectType):
 
 group_fields = merge_with_django_properties(GroupType, dict(
     id=dict(create=DENY, update=[REQUIRE]),
-    name=dict(create=[REQUIRE], unique_with=increment_prop_until_unique(Group, None, 'name'))
+    name=dict(create=[REQUIRE], unique_with=increment_prop_until_unique(Group, None, 'name', {}))
 ))
 
 group_mutation_config = dict(

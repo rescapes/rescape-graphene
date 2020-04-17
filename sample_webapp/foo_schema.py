@@ -77,7 +77,7 @@ def feature_fields_in_graphql_geojson_format(args):
 
 
 foo_fields = merge_with_django_properties(FooType, dict(
-    key=dict(create=REQUIRE, unique_with=increment_prop_until_unique(Foo, None, 'key')),
+    key=dict(create=REQUIRE, unique_with=increment_prop_until_unique(Foo, None, 'key', {})),
     name=dict(create=REQUIRE),
     created_at=dict(),
     updated_at=dict(),

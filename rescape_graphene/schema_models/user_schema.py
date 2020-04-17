@@ -21,7 +21,7 @@ class UserType(DjangoObjectType):
 
 user_fields = merge_with_django_properties(UserType, dict(
     id=dict(create=DENY, update=[REQUIRE]),
-    username=dict(create=[REQUIRE], unique_with=increment_prop_until_unique(get_user_model(), None, 'username')),
+    username=dict(create=[REQUIRE], unique_with=increment_prop_until_unique(get_user_model(), None, 'username', {})),
     password=dict(create=[REQUIRE], read=DENY),
     email=dict(create=[REQUIRE]),
     is_superuser=dict(),
