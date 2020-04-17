@@ -1,9 +1,12 @@
+import inspect
+
 from django.db.models import Q
 from rescape_python_helpers import ramda as R
 
 
 def default_strategy(matches, prop_value, i):
     return '%s%s' % (prop_value, i + 1)
+
 
 @R.curry
 def increment_prop_until_unique(django_class, strategy, prop, additional_filter_props, django_instance_data):
@@ -13,7 +16,8 @@ def increment_prop_until_unique(django_class, strategy, prop, additional_filter_
     :param django_class: Django class to query
     :param prop: The prop to ensure uniqueness
     :param additional_filter_props: Other props, such as user id, to filter by. This allows incrementing a name
-    dependent on the current user, for instance
+    dependent on the current user, for instance. This can be a dict or a function expecting the django_instance_data
+    and returning a dict
     :param strategy: function to try to make a value unique. Expects all potential matching values--all values
     that begin with the value of the property--the prop value, and the current index. It's called for each matching
     value to guarentee the strategy will eventually get a unique value. For instance, if prop is key and it equals
@@ -32,7 +36,14 @@ def increment_prop_until_unique(django_class, strategy, prop, additional_filter_
         *R.compact([
             ~Q(id=pk) if pk else None,
         ]),
-        **R.merge({'%s__startswith' % prop: prop_value}, additional_filter_props or {})
+        **R.merge(
+            {'%s__startswith' % prop: prop_value},
+            # Give the filter props the instance f they are a function
+            R.when(
+                lambda f: inspect.isfunction(f),
+                lambda f: f(django_instance_data)
+            )(additional_filter_props or {})
+        )
     ).values_list(prop, flat=True)
 
     success = prop_value
@@ -64,8 +75,8 @@ def enforce_unique_props(property_fields, django_instance_data):
     # By querying the database for duplicate. This is mainly for non-pk fields like a key
     return R.reduce(
         lambda reduced, prop_field_tup: prop_field_tup[1]['unique_with'](reduced) if
-            R.has(prop_field_tup[0], reduced) and R.prop_or(False, 'unique_with', prop_field_tup[1]) else
-            reduced,
+        R.has(prop_field_tup[0], reduced) and R.prop_or(False, 'unique_with', prop_field_tup[1]) else
+        reduced,
         django_instance_data,
         property_fields.items()
     )
