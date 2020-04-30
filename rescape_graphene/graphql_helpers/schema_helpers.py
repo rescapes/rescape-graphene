@@ -11,7 +11,7 @@ from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToMan
     GeometryCollectionField
 from graphql import parse
 
-from rescape_python_helpers import ramda as R
+from rescape_python_helpers import ramda as R, memoize
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
@@ -22,7 +22,6 @@ from inflection import camelize
 from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs, flatten_dct_until
 
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
-from .memoize import memoize
 
 logger = logging.getLogger('rescape_graphene')
 from django.conf import settings
