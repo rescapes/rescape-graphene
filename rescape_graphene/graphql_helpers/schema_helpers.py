@@ -959,3 +959,28 @@ def merge_data_fields_on_update(data_fields, existing_instance, data):
             ], ["override"], ["override"])
         )
     )
+
+
+def delete_if_marked_for_delete(model_cls, grapene_upsert_class, upsert_field_name, model_data):
+    """
+    Delete functionality for graphene models whose django_model mixes in  safe-delete
+    This looks for a deleted=datetime field and calles manage.delete on the instance
+    matching model_data.id if deleted is not null
+    :param model_cls: The Django model class
+    :param grapene_upsert_class: The Graphene upsert class
+    :param upsert_field_name: The named argument to pass when instantiating the upsert class, e.g. 'region' for Region
+    :param model_data:  The model data. Must have non-null id and deleted fields to cause a deletion
+    :return:
+    """
+
+    if R.all_satisfy(lambda prop: R.prop_or(False, prop, model_data), ['id', 'deleted']):
+        # Existing objects with a nonnull deleted datetime are deleted
+        instances = model_cls.objects.filter(
+            id=R.prop('id', model_data)
+        )
+        instances.delete()
+        instance = model_cls.objects.deleted_only().get(**R.pick(['id'], model_data))
+        if not instance:
+            raise Exception(f"Failed to delete {R.prop('id', instance)}")
+        return grapene_upsert_class(**{upsert_field_name: instance})
+    return None
