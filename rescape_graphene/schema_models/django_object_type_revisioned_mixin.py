@@ -1,5 +1,5 @@
 import graphene
-from graphene_django import DjangoObjectType
+
 
 class DjangoObjectTypeRevisionedMixin(object):
     id = graphene.Int(source='pk')
