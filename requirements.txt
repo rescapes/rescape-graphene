@@ -3,11 +3,11 @@ django-filter==2.0.0
 pyramda==0.1
 graphene==2.1.8
 django-loginas==0.3.6
-graphene-django==2.9.1
+graphene-django==2.10.1
 snapshottest==0.5.1
 inflection==0.3.1
 deepmerge==0.1.0
-bumpversion==0.5.3
+bumpversion==0.6.0
 djangorestframework==3.9.4
 djangorestframework-jwt==1.11.0
 psycopg2-binary==2.8.5
@@ -19,7 +19,9 @@ twine==1.15.0
 utils==0.9.0
 simplejson==3.17.0
 jsonfield===2.0.2
-rescape-python-helpers==0.0.31
-pytest==4.6.9
-pytest-cov==2.8.1
+rescape-python-helpers==0.0.33
+pytest==4.6.11
+pytest-cov==2.10.0
 pytest-django==3.9.0
+django-reversion==3.0.7
+django-reversion-compare==0.12.2

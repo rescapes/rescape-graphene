@@ -1,18 +1,19 @@
 import graphene
-from graphql_jwt.decorators import login_required
-
-from ..django_helpers.write_helpers import increment_prop_until_unique
-
-from rescape_python_helpers import ramda as R
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from graphene import InputObjectType
 from graphene_django.types import DjangoObjectType
+from graphql_jwt.decorators import login_required
+from rescape_python_helpers import ramda as R
+
+from .django_object_type_revisioned_mixin import DjangoObjectTypeRevisionedMixin
+from ..django_helpers.write_helpers import increment_prop_until_unique
 from ..graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
     merge_with_django_properties, input_type_parameters_for_update_or_create, UPDATE, \
-    guess_update_or_create, graphql_update_or_create, graphql_query
+    guess_update_or_create, graphql_update_or_create, graphql_query, update_or_create_with_revision
 
-class UserType(DjangoObjectType):
+
+class UserType(DjangoObjectType, DjangoObjectTypeRevisionedMixin):
     id = graphene.Int(source='pk')
 
     class Meta:
@@ -55,7 +56,7 @@ class UpsertUser(graphene.Mutation):
         R.prop_or(False, 'password', user_data) else
         {})
         update_or_create_values = input_type_parameters_for_update_or_create(user_fields, data)
-        user, created = user_model.objects.update_or_create(**update_or_create_values)
+        user, created = update_or_create_with_revision(user_model, update_or_create_values)
         return UpsertUser(user=user)
 
 

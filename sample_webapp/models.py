@@ -4,6 +4,13 @@ from django.contrib.gis.db.models import GeometryCollectionField, Model
 from django.contrib.postgres.fields import JSONField
 from django.db.models import CharField, DateTimeField, ForeignKey
 
+import reversion
+from django.contrib.auth.models import User, Group
+
+# Register Revisions for User and Group
+reversion.register(User)
+reversion.register(Group)
+
 
 class Foo(Model):
     """
@@ -31,4 +38,3 @@ class Foo(Model):
 
     def __str__(self):
         return self.name
-

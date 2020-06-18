@@ -4,6 +4,7 @@ import logging
 import sys
 from decimal import Decimal
 
+import reversion
 from deepmerge import Merger
 from graphql.language.printer import print_ast
 import graphene
@@ -984,3 +985,19 @@ def delete_if_marked_for_delete(model_cls, grapene_upsert_class, upsert_field_na
             raise Exception(f"Failed to delete {R.prop('id', instance)}")
         return grapene_upsert_class(**{upsert_field_name: instance})
     return None
+
+
+def update_or_create_with_revision(model_class, update_or_create_values):
+    """
+        Perform update or create with the given model_class and update_or_create_values
+        where the model_class must be registered with django-reversion. The update or create
+        saves a new revision
+    :param model_class:
+    :param update_or_create_values:
+    :return: The tuple from update_or_create
+    """
+
+    # Declare a revision block.
+    with reversion.create_revision():
+        return model_class.objects.update_or_create(**update_or_create_values)
+

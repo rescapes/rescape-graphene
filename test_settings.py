@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'sample_webapp',
     'corsheaders',
     'graphene_django',
+    'reversion',
+    'reversion_compare'
 ]
 
 STATIC_URL = '/static/'

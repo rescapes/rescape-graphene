@@ -9,10 +9,11 @@ from graphene import InputObjectType
 from graphene_django.types import DjangoObjectType
 from rescape_graphene.graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
     merge_with_django_properties, input_type_parameters_for_update_or_create, UPDATE, \
-    guess_update_or_create, graphql_update_or_create, graphql_query
+    guess_update_or_create, graphql_update_or_create, graphql_query, update_or_create_with_revision
+from rescape_graphene.schema_models.django_object_type_revisioned_mixin import DjangoObjectTypeRevisionedMixin
 
 
-class GroupType(DjangoObjectType):
+class GroupType(DjangoObjectType, DjangoObjectTypeRevisionedMixin):
     class Meta:
         model = Group
 
@@ -44,7 +45,7 @@ class UpsertGroup(graphene.Mutation):
         R.prop_or(False, 'password', group_data) else
         {})
         update_or_create_values = input_type_parameters_for_update_or_create(group_fields, data)
-        group, created = group_model.objects.update_or_create(**update_or_create_values)
+        group, created = update_or_create_with_revision(group_model, update_or_create_values)
         return UpsertGroup(group=group)
 
 

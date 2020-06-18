@@ -1,12 +1,13 @@
 import logging
 
 import pytest
+from django.contrib.auth import get_user_model
+from reversion.models import Version
 
 from sample_webapp.test_schema_helpers import assert_no_errors
 from rescape_graphene.testcases import client_for_testing
 from rescape_python_helpers import ramda as R
 from django.contrib.auth.hashers import make_password
-from django.contrib.auth.models import User
 from snapshottest import TestCase
 from .user_schema import graphql_update_or_create_user, graphql_query_users, \
     graphql_authenticate_user, graphql_verify_user, graphql_refresh_token
@@ -23,13 +24,17 @@ class UserTypeCase(TestCase):
     def setUp(self):
         # Prevent a circular dependency
         from sample_webapp.sample_schema import schema
-        admin, _ = User.objects.update_or_create(username="admin", defaults=dict(first_name='Ad', last_name='Min',
-                                                     password=make_password("cool", salt='not_random'), is_superuser=True))
+        admin, _ = get_user_model().objects.update_or_create(username="admin",
+                                                             defaults=dict(first_name='Ad', last_name='Min',
+                                                                           password=make_password("cool",
+                                                                                                  salt='not_random'),
+                                                                           is_superuser=True))
         self.client = client_for_testing(schema, admin)
-        self.user, _ = User.objects.update_or_create(username="lion", first_name='Simba', last_name='The Lion',
-                                      password=make_password("roar", salt='not_random'))
-        User.objects.update_or_create(username="cat", first_name='Felix', last_name='The Cat',
-                                      password=make_password("meow", salt='not_random'))
+        self.user, _ = get_user_model().objects.update_or_create(username="lion", first_name='Simba',
+                                                                 last_name='The Lion',
+                                                                 password=make_password("roar", salt='not_random'))
+        get_user_model().objects.update_or_create(username="cat", first_name='Felix', last_name='The Cat',
+                                                  password=make_password("meow", salt='not_random'))
 
     def test_authenticate(self):
         values = dict(username=self.user.username, password='roar')
@@ -45,7 +50,7 @@ class UserTypeCase(TestCase):
     def test_query(self):
         result = graphql_query_users(self.client)
         assert_no_errors(result)
-        assert 2 == R.length(R.prop('users', result.data))
+        assert 2 == R.length(R.prop('data.users', result))
 
     def test_create(self):
         values = dict(username="dino", firstName='T', lastName='Rex',
@@ -53,7 +58,11 @@ class UserTypeCase(TestCase):
         result = graphql_update_or_create_user(self.client, values)
         assert_no_errors(result)
         # look at the users added and omit the non-determinant dateJoined
-        assert R.item_str_path('createUser.user', result.data)
+        assert R.item_str_path('data.createUser.user', result)
+        versions = Version.objects.get_for_object(get_user_model().objects.get(
+            id=R.item_str_path('data.createUser.user.id', result)
+        ))
+        assert len(versions) == 1
 
     def test_update(self):
         values = dict(username="dino", firstName='T', lastName='Rex',
@@ -62,7 +71,7 @@ class UserTypeCase(TestCase):
         create_result = graphql_update_or_create_user(self.client, values)
 
         # Unfortunately Graphene returns the ID as a string, even when its an int
-        id = int(R.prop('id', R.item_str_path('createUser.user', create_result.data)))
+        id = int(R.prop('id', R.item_str_path('data.createUser.user', create_result)))
 
         # Here is our update
         result = graphql_update_or_create_user(
@@ -70,7 +79,11 @@ class UserTypeCase(TestCase):
             dict(id=id, firstName='Al', lastName="Lissaurus")
         )
         assert_no_errors(result)
-        assert R.item_str_path('updateUser.user', result.data)
+        assert R.item_str_path('data.updateUser.user', result)
+        versions = Version.objects.get_for_object(get_user_model().objects.get(
+            id=R.item_str_path('data.updateUser.user.id', result)
+        ))
+        assert len(versions) == 2
 
     # def test_delete(self):
     #     self.assertMatchSnapshot(self.client.execute('''{
