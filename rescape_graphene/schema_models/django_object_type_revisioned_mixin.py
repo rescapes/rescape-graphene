@@ -4,7 +4,6 @@ from graphene import DateTime, Int
 
 # RevisionModelMixin properties
 reversion_types = dict(
-    deleted={},
     created_at=dict(type=DateTime),
     updated_at=dict(type=DateTime),
     version_number=dict(type=Int),
