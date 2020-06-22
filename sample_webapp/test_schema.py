@@ -88,7 +88,7 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
         assert not R.prop('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
         assert 1 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'foos'], foo_results)))
         # Make sure the Django instance in the json blob was resolved
-        assert str(self.cat.id) == R.item_path(['data', 'foos', 0, 'data', 'friend', 'id'], foo_results)
+        assert self.cat.id == R.item_path(['data', 'foos', 0, 'data', 'friend', 'id'], foo_results)
 
     def test_query_foo_with_null_geojson(self):
         # Query using for foos based on the related User

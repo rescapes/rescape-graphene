@@ -187,7 +187,7 @@ LOGGING = {
             # Use for custom log info: logger = logging.getLogger("info")
             'handlers': ['django_info', 'console'],
             'propagate': True,
-            'level': 'INFO',
+            'level': 'DEBUG',
         },
         'django': {
             # Requests only go to the console, don't log to file

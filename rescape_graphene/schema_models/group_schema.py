@@ -9,10 +9,11 @@ from rescape_graphene.django_helpers.write_helpers import increment_prop_until_u
 from rescape_graphene.graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
     merge_with_django_properties, input_type_parameters_for_update_or_create, UPDATE, \
     guess_update_or_create, graphql_update_or_create, graphql_query, update_or_create_with_revision
-from rescape_graphene.schema_models.django_object_type_revisioned_mixin import reversion_types
+from rescape_graphene.schema_models.django_object_type_revisioned_mixin import reversion_types, \
+    DjangoObjectTypeRevisionedMixin
 
 
-class GroupType(DjangoObjectType):
+class GroupType(DjangoObjectType, DjangoObjectTypeRevisionedMixin):
     class Meta:
         model = Group
 
