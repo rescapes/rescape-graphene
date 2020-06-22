@@ -1,9 +1,19 @@
 import graphene
+from graphene_django import DjangoObjectType
+from graphene import DateTime, Int
 
+# RevisionModelMixin properties
+reversion_types = dict(
+    deleted={},
+    created_at=dict(type=DateTime),
+    updated_at=dict(type=DateTime),
+    version_number=dict(type=Int),
+    revision_id=dict(type=Int)
+)
 
-class DjangoObjectTypeRevisionedMixin(object):
-    id = graphene.Int(source='pk')
-    date_created = graphene.DateTime(source='date_created')
-    date_updated = graphene.DateTime(source='date_updated')
-    version_number = graphene.Int(source='version_number')
-    revision_id = graphene.Int(source='revision_id')
+# Deleted is for the SafeDeleteModel mixin and the others correspond to the RevisionModelMixin properties
+# Note that deleted is a model field so doesn't need a type. The properties do
+reversion_and_safe_delete_types = dict(
+    deleted={},
+    **reversion_types
+)

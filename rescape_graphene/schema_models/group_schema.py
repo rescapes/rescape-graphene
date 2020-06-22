@@ -1,16 +1,15 @@
 import graphene
-from django.contrib.auth.models import Group
-
-from rescape_graphene.django_helpers.write_helpers import increment_prop_until_unique
-
-from rescape_python_helpers import ramda as R
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import Group
 from graphene import InputObjectType
 from graphene_django.types import DjangoObjectType
+from rescape_python_helpers import ramda as R
+
+from rescape_graphene.django_helpers.write_helpers import increment_prop_until_unique
 from rescape_graphene.graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
     merge_with_django_properties, input_type_parameters_for_update_or_create, UPDATE, \
     guess_update_or_create, graphql_update_or_create, graphql_query, update_or_create_with_revision
-from rescape_graphene.schema_models.django_object_type_revisioned_mixin import DjangoObjectTypeRevisionedMixin
+from rescape_graphene.schema_models.django_object_type_revisioned_mixin import reversion_types
 
 
 class GroupType(DjangoObjectType, DjangoObjectTypeRevisionedMixin):
@@ -20,7 +19,8 @@ class GroupType(DjangoObjectType, DjangoObjectTypeRevisionedMixin):
 
 group_fields = merge_with_django_properties(GroupType, dict(
     id=dict(create=DENY, update=[REQUIRE]),
-    name=dict(create=[REQUIRE], unique_with=increment_prop_until_unique(Group, None, 'name', {}))
+    name=dict(create=[REQUIRE], unique_with=increment_prop_until_unique(Group, None, 'name', {})),
+    **reversion_types
 ))
 
 group_mutation_config = dict(

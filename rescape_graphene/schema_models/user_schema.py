@@ -6,14 +6,14 @@ from graphene_django.types import DjangoObjectType
 from graphql_jwt.decorators import login_required
 from rescape_python_helpers import ramda as R
 
-from .django_object_type_revisioned_mixin import DjangoObjectTypeRevisionedMixin
+from .django_object_type_revisioned_mixin import reversion_types
 from ..django_helpers.write_helpers import increment_prop_until_unique
 from ..graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
     merge_with_django_properties, input_type_parameters_for_update_or_create, UPDATE, \
     guess_update_or_create, graphql_update_or_create, graphql_query, update_or_create_with_revision
 
 
-class UserType(DjangoObjectType, DjangoObjectTypeRevisionedMixin):
+class UserType(DjangoObjectType):
     id = graphene.Int(source='pk')
 
     class Meta:
@@ -30,7 +30,8 @@ user_fields = merge_with_django_properties(UserType, dict(
     last_name=dict(create=REQUIRE),
     is_staff=dict(),
     is_active=dict(),
-    date_joined=dict(create=DENY, update=DENY)
+    date_joined=dict(create=DENY, update=DENY),
+    **reversion_types
 ))
 
 user_mutation_config = dict(
