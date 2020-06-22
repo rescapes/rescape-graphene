@@ -12,7 +12,7 @@ from rescape_graphene.graphql_helpers.schema_helpers import input_type_fields, R
 from rescape_graphene.schema_models.django_object_type_revisioned_mixin import reversion_types
 
 
-class GroupType(DjangoObjectType, DjangoObjectTypeRevisionedMixin):
+class GroupType(DjangoObjectType):
     class Meta:
         model = Group
 
