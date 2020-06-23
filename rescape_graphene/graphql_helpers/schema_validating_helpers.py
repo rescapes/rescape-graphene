@@ -75,7 +75,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     assert page_info['hasPrev'] == False
     # Get the next page
     new_result = paginated_query(
-        self.client,
+        client,
         variables=dict(
             page=page_info['page'] + 1,
             page_size=page_info['pageSize'],
