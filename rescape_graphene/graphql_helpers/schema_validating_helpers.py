@@ -26,12 +26,14 @@ def quiz_model_query(client, model_query_function, result_name, variables):
     assert 1 == R.length(R.item_path(['data', result_name], result))
 
 
-def quiz_model_paginated_query(client, model_class, paginated_query, result_name, props, omit_props):
+def quiz_model_paginated_query(client, model_class, paginated_query, result_name, page_count_expected, props, omit_props):
     """
         Tests a pagination query for a model with variables
     :param client: Apollo client
     :param model_class: Model class
     :param paginated_query: Model's pagination query
+    :param page_count_expected: The number of pages expected when the page_size is 1, in other words the
+    number of items in the database that match props
     :param result_name: The name of the results in data.[result_name].objects
     :param props: The props to query, not including pagination
     :param omit_props: Props to omit from assertions because they are nondeterminate
@@ -70,7 +72,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
 
     page_info = R.item_path(['data', result_name], result)
     # We have 1 page pages and thus expect 2 pages that match Oslo
-    assert page_info['pages'] == 2
+    assert page_info['pages'] == page_count_expected
     assert page_info['hasNext'] == True
     assert page_info['hasPrev'] == False
     # Get the next page
@@ -88,7 +90,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     )(new_result)
 
     new_page_info = R.item_path(['data', result_name], new_result)
-    assert new_page_info['pages'] == 2
+    assert new_page_info['pages'] == page_count_expected
     assert new_page_info['hasNext'] == False
     assert new_page_info['hasPrev'] == True
 
