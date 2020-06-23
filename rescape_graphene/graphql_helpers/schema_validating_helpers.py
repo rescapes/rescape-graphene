@@ -2,6 +2,8 @@ from inflection import underscore
 from rescape_python_helpers import ramda as R
 from rescape_python_helpers.functional.ramda import pick_deep
 
+from rescape_graphene import process_filter_kwargs
+
 
 def quiz_model_query(client, model_query_function, result_name, variables):
     """
@@ -22,6 +24,73 @@ def quiz_model_query(client, model_query_function, result_name, variables):
     assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
     # Simple assertion that the query looks good
     assert 1 == R.length(R.item_path(['data', result_name], result))
+
+
+def quiz_model_paginated_query(client, model_class, paginated_query, result_name, props, omit_props):
+    """
+        Tests a pagination query for a model with variables
+    :param client: Apollo client
+    :param model_class: Model class
+    :param paginated_query: Model's pagination query
+    :param result_name: The name of the results in data.[result_name].objects
+    :param props: The props to query, not including pagination
+    :param omit_props: Props to omit from assertions because they are nondeterminate
+    :return:
+    """
+    result = paginated_query(
+        client,
+        variables=dict(
+            page=1,
+            page_size=1,
+            objects=props
+        )
+    )
+    # Check against errors
+    assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+    first_page_objects = R.item_path(['data', result_name, 'objects'], result)
+    # Assert we got 1 result because our page is size 1
+    assert 1 == R.compose(
+        R.length,
+        R.map(R.omit(omit_props)),
+    )(first_page_objects)
+
+    remaining_oslo_object_id = R.head(
+        list(
+            set(
+                R.map(
+                    R.prop('id'),
+                    model_class.objects.filter(
+                        **process_filter_kwargs(props)
+                    )
+                )
+            ) -
+            set(R.map(R.compose(int, R.prop('id')), first_page_objects))
+        )
+    )
+
+    page_info = R.item_path(['data', result_name], result)
+    # We have 1 page pages and thus expect 2 pages that match Oslo
+    assert page_info['pages'] == 2
+    assert page_info['hasNext'] == True
+    assert page_info['hasPrev'] == False
+    # Get the next page
+    new_result = paginated_query(
+        self.client,
+        variables=dict(
+            page=page_info['page'] + 1,
+            page_size=page_info['pageSize'],
+            objects=props
+        )
+    )
+    assert remaining_oslo_object_id == R.compose(
+        lambda id: int(id),
+        R.item_path(['data', result_name, 'objects', 0, 'id'])
+    )(new_result)
+
+    new_page_info = R.item_path(['data', result_name], new_result)
+    assert new_page_info['pages'] == 2
+    assert new_page_info['hasNext'] == False
+    assert new_page_info['hasPrev'] == True
 
 
 def quiz_model_mutation_create(client, graphql_update_or_create_function, result_path, values,
