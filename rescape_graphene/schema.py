@@ -1,12 +1,13 @@
 import graphene
 import graphql_jwt
-from django.contrib.auth import get_user_model, get_user
+from django.contrib.auth import get_user_model
 from graphene import ObjectType, Schema
 from graphql_jwt.decorators import login_required, staff_member_required
-from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser, user_fields
-from rescape_graphene.graphql_helpers.schema_helpers import allowed_read_fields, process_filter_kwargs, \
-    allowed_filter_arguments
 from rescape_python_helpers import ramda as R
+
+from rescape_graphene.graphql_helpers.schema_helpers import process_filter_kwargs, \
+    allowed_filter_arguments
+from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser, user_fields
 
 
 class Query(ObjectType):
