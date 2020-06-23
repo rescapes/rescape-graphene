@@ -7,13 +7,12 @@ from rescape_graphene import DENY
 def get_paginator(qs, page_size, page, paginated_type, **kwargs):
     """
     Adapted from https://gist.github.com/mbrochh/f92594ab8188393bd83c892ef2af25e6
-    First we create a little helper function, becase we will potentially have many PaginatedTypes
-    and we will potentially want to turn many querysets into paginated results:
+    Creates a pagination_type based on the paginated_type function
     :param qs:
     :param page_size:
     :param page:
     :param paginated_type:
-    :param kwargs:
+    :param kwargs: Additional kwargs to pass paginated_type function, usually unneeded
     :return:
     """
     p = Paginator(qs, page_size)
