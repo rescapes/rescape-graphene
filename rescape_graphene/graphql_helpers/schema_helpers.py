@@ -666,7 +666,7 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
         #   unique_key1=value, unique_key2=value, ...,
         #   defaults=(non_unique_key1=value, non_unique_key2=value, ...)
         # )
-        return R.merge_deep_all(R.map_with_obj_to_values(
+        to_insert = R.merge_deep_all(R.map_with_obj_to_values(
             lambda key, value: key_value_based_on_unique_or_foreign(
                 key_to_modified_key_and_value,
                 fields_dict,
@@ -674,6 +674,10 @@ def input_type_parameters_for_update_or_create(fields_dict, field_name_to_value)
             ),
             field_name_to_value
         ))
+        # If there are only defaults, which is true if no property must be globally unique, such as a key,
+        # then extract everything from defaults. This prevents a defaults only dict that makes Django
+        # return all model instances when it's testing to do an update or an insert
+        return R.when(R.compose(R.equals(1), R.length, R.keys), R.prop('defaults'))(to_insert)
 
 
 @R.curry
