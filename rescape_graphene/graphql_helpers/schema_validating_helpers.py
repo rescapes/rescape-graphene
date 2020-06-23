@@ -26,7 +26,8 @@ def quiz_model_query(client, model_query_function, result_name, variables):
     assert 1 == R.length(R.item_path(['data', result_name], result))
 
 
-def quiz_model_paginated_query(client, model_class, paginated_query, result_name, page_count_expected, props, omit_props):
+def quiz_model_paginated_query(client, model_class, paginated_query, result_name, page_count_expected, props,
+                               omit_props):
     """
         Tests a pagination query for a model with variables
     :param client: Apollo client
@@ -56,18 +57,16 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
         R.map(R.omit(omit_props)),
     )(first_page_objects)
 
-    remaining_oslo_object_id = R.head(
-        list(
-            set(
-                R.map(
-                    R.prop('id'),
-                    model_class.objects.filter(
-                        *process_filter_kwargs(model_class, R.map_keys(underscore, props))
-                    )
+    remaining_ids = list(
+        set(
+            R.map(
+                R.prop('id'),
+                model_class.objects.filter(
+                    *process_filter_kwargs(model_class, R.map_keys(underscore, props))
                 )
-            ) -
-            set(R.map(R.compose(int, R.prop('id')), first_page_objects))
-        )
+            )
+        ) -
+        set(R.map(R.compose(int, R.prop('id')), first_page_objects))
     )
 
     page_info = R.item_path(['data', result_name], result)
@@ -75,22 +74,25 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     assert page_info['pages'] == page_count_expected
     assert page_info['hasNext'] == True
     assert page_info['hasPrev'] == False
-    # Get the next page
+    # Get the final page
     new_result = paginated_query(
         client,
         variables=dict(
-            page=page_info['page'] + 1,
+            page=page_count_expected,
             page_size=page_info['pageSize'],
             objects=props
         )
     )
-    assert remaining_oslo_object_id == R.compose(
-        lambda id: int(id),
-        R.item_path(['data', result_name, 'objects', 0, 'id'])
-    )(new_result)
+    # Make sure the new_result matches one of the remaining ids
+    assert R.contains(
+        R.item_path(['data', result_name, 'objects', 0, 'id'], new_result),
+        remaining_ids
+    )
 
     new_page_info = R.item_path(['data', result_name], new_result)
+    # Still expect the same page count
     assert new_page_info['pages'] == page_count_expected
+    # Make sure it's the last page
     assert new_page_info['hasNext'] == False
     assert new_page_info['hasPrev'] == True
 
