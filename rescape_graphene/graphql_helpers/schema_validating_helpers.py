@@ -3,6 +3,7 @@ from rescape_python_helpers import ramda as R
 from rescape_python_helpers.functional.ramda import pick_deep
 
 from rescape_graphene import process_filter_kwargs
+from rescape_graphene.django_helpers.versioning import get_versioner
 
 
 def quiz_model_query(client, model_query_function, result_name, variables):
@@ -95,6 +96,39 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     # Make sure it's the last page
     assert new_page_info['hasNext'] == False
     assert new_page_info['hasPrev'] == True
+
+def quiz_model_versioned_query(client, model_class, model_query, result_name, version_count_expected, props, omit_props):
+    """
+        Tests a versioned query for a model with variables
+    :param client: Apollo client
+    :param model_class: Model class
+    :param model_query: Model's query that should return one result (as a filter)
+    number of items in the database that match props
+    :param result_name: The name of the results in data.[result_name].objects
+    :param version_count_expected The number of versions of the instance we expect
+    :param props: The props to query to find a single instance. Should just be {id:...}
+    :param omit_props: Props to omit from assertions because they are nondeterminate
+    :return:
+    """
+    result = model_query(
+        client,
+        variables=dict(
+            objects=props
+        )
+    )
+    # Check against errors
+    assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+
+    # Assert we got 1 result
+
+    get_versioner(result)
+    version_sets = R.item_path(['data', result_name, 'objects'], result)
+    assert 1 == R.compose(
+        R.length,
+        R.map(R.omit(omit_props)),
+    )(version_sets)
+    # Expect versions_count
+    assert R.compose(R.length, R.prop('objects'), R.head)(version_sets) == version_count_expected
 
 
 def quiz_model_mutation_create(client, graphql_update_or_create_function, result_path, values,
