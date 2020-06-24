@@ -64,7 +64,7 @@ def create_version_type(model_object_type, model_object_type_fields):
         (ObjectType,),
         dict(
             id=Int(),
-            reversion=Field(RevisionType),
+            revision=Field(RevisionType),
             field_dict=Field(model_object_type)
         )
     )
