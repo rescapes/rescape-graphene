@@ -59,8 +59,8 @@ class VersionType(DjangoObjectType):
 def create_version_type(model_object_type, model_object_type_fields):
     # We can't assign Version as the Meta model because multiple classes would point at the same model,
     # which probably isn't allowed
-    versioned_type_model = type(
-        f'VersionedTypeMixinFor{model_object_type.__name__}',
+    version_type_model = type(
+        f'VersionTypeModelFor{model_object_type.__name__}',
         (ObjectType,),
         dict(
             id=Int(),
@@ -85,10 +85,10 @@ def create_version_type(model_object_type, model_object_type_fields):
             type_modifier=lambda *type_and_args: Field(*type_and_args)
         )
     ))
-    return dict(type=versioned_type_model, fields=versioned_fields)
+    return dict(type=version_type_model, fields=versioned_fields)
 
 
-def create_versions_type(model_object_type, model_object_type_fields):
+def create_version_container_type(model_object_type, model_object_type_fields):
     """
         DjangObjectType and fields to hold all the versions of one instance
     :param model_object_type:
@@ -101,7 +101,7 @@ def create_versions_type(model_object_type, model_object_type_fields):
     )
 
     versions_type_model = type(
-        f'VersionsTypeModelFor{model_object_type.__name__}',
+        f'VersionContainerTypeModelFor{model_object_type.__name__}',
         (ObjectType,),
         dict(
             objects=List(version_type),
