@@ -65,7 +65,7 @@ def create_version_type(model_object_type, model_object_type_fields):
         dict(
             id=Int(),
             reversion=Field(RevisionType),
-            field_dict=Field(model_object_type_fields)
+            field_dict=Field(model_object_type)
         )
     )
 
@@ -78,7 +78,12 @@ def create_version_type(model_object_type, model_object_type_fields):
             fields=revision_fields,
             type_modifier=lambda *type_and_args: Field(*type_and_args)
         ),
-        field_dict=model_object_type_fields
+        field_dict=dict(
+            type=model_object_type,
+            graphene_type=model_object_type,
+            fields=model_object_type_fields,
+            type_modifier=lambda *type_and_args: Field(*type_and_args)
+        )
     ))
     return dict(type=versioned_type_model, fields=versioned_fields)
 
