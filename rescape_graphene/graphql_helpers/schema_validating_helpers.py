@@ -116,23 +116,14 @@ def quiz_model_versioned_query(client, model_class, model_query, result_name, ve
         client,
         variables=dict(
             objects=dict(
-                fieldDict=props
+                instance=props
             )
         )
     )
     # Check against errors
     assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
-
-    # Assert we got 1 result
-
-    get_versioner(result)
-    version_sets = R.item_path(['data', result_name, 'objects'], result)
-    assert 1 == R.compose(
-        R.length,
-        R.map(R.omit(omit_props)),
-    )(version_sets)
-    # Expect versions_count
-    assert R.compose(R.length, R.prop('objects'), R.head)(version_sets) == version_count_expected
+    assert R.compose(R.length, R.item_str_path_or([], 'data.locationsVersioned.objects'))(
+        result) == version_count_expected
 
 
 def quiz_model_mutation_create(client, graphql_update_or_create_function, result_path, values,

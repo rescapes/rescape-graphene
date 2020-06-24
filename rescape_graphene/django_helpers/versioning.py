@@ -25,7 +25,7 @@ def get_versioner(single_object_qs, versions_type, **kwargs):
     versions = Version.objects.get_for_object(instance)
 
     return versions_type(
-        objects=R.map(lambda version: version._object_version.object, list(versions)),
+        objects=list(versions), #R.map(lambda version: version._object_version.object, list(versions)),
         **kwargs
     )
 
@@ -59,13 +59,17 @@ class VersionType(DjangoObjectType):
 def create_version_type(model_object_type, model_object_type_fields):
     # We can't assign Version as the Meta model because multiple classes would point at the same model,
     # which probably isn't allowed
+
+    def resolve_instance(parent, info, **kwargs):
+        return parent._object_version.object
+
     version_type_model = type(
         f'VersionTypeModelFor{model_object_type.__name__}',
         (ObjectType,),
         dict(
             id=Int(),
             revision=Field(RevisionType),
-            field_dict=Field(model_object_type)
+            instance=Field(model_object_type, resolver=resolve_instance)
         )
     )
 
@@ -78,7 +82,7 @@ def create_version_type(model_object_type, model_object_type_fields):
             fields=revision_fields,
             type_modifier=lambda *type_and_args: Field(*type_and_args)
         ),
-        field_dict=dict(
+        instance=dict(
             type=model_object_type,
             graphene_type=model_object_type,
             fields=model_object_type_fields,
@@ -104,12 +108,9 @@ def create_version_container_type(model_object_type, model_object_type_fields):
         f'VersionContainerTypeModelFor{model_object_type.__name__}',
         (ObjectType,),
         dict(
-            objects=List(version_type),
+            objects=List(version_type)
         )
     )
-
-    def x(*type_and_args):
-        return List(*type_and_args)
 
     # Merge the Revision Django properties with our field config
     versions_fields = merge_with_django_properties(VersionType, dict(
@@ -118,7 +119,7 @@ def create_version_container_type(model_object_type, model_object_type_fields):
             type=version_type,
             graphene_type=version_type,
             fields=version_type_fields,
-            type_modifier=x
+            type_modifier=lambda *type_and_args: List(*type_and_args)
         )
     ))
     return dict(type=versions_type_model, fields=versions_fields)
