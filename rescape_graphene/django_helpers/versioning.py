@@ -9,7 +9,7 @@ from reversion.models import Version, Revision
 from rescape_graphene import DENY, merge_with_django_properties, UserType, user_fields
 
 
-def get_versioner(single_object_qs, versions_type, **kwargs):
+def get_versioner(single_object_qs, versions_type, model_class, **kwargs):
     """
 
     Cre
@@ -17,6 +17,7 @@ def get_versioner(single_object_qs, versions_type, **kwargs):
     and we will potentially want to turn many querysets into paginated results:
     :param single_object_qs: The queryset that must return exactly one instance
     :param versions_type Class created by create_versions_type to hold all the versions of one model instance
+    :param model_class The model class to rehydrate versions with (TODO might be avaialbe from the reversion API)
     :param kwargs: Addition kwargs to versioned_type, usually not needed
     :return:
     """
@@ -25,7 +26,7 @@ def get_versioner(single_object_qs, versions_type, **kwargs):
     versions = Version.objects.get_for_object(instance)
 
     return versions_type(
-        objects=versions,
+        objects=R.map(lambda version: model_class(version), list(versions)),
         **kwargs
     )
 

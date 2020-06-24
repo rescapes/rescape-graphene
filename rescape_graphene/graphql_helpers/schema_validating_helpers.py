@@ -97,7 +97,9 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     assert new_page_info['hasNext'] == False
     assert new_page_info['hasPrev'] == True
 
-def quiz_model_versioned_query(client, model_class, model_query, result_name, version_count_expected, props, omit_props):
+
+def quiz_model_versioned_query(client, model_class, model_query, result_name, version_count_expected, props,
+                               omit_props):
     """
         Tests a versioned query for a model with variables
     :param client: Apollo client
@@ -113,7 +115,9 @@ def quiz_model_versioned_query(client, model_class, model_query, result_name, ve
     result = model_query(
         client,
         variables=dict(
-            objects=props
+            objects=dict(
+                fieldDict=props
+            )
         )
     )
     # Check against errors
