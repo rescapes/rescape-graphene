@@ -7,7 +7,7 @@ from graphene import Int, Boolean, ObjectType, List, Field
 from graphene_django import DjangoObjectType
 from reversion.models import Version, Revision
 
-from rescape_graphene import DENY, merge_with_django_properties, REQUIRE
+from rescape_graphene import DENY, merge_with_django_properties, REQUIRE, UserType, user_fields
 
 
 def get_versioner(single_object_qs, versions_type, **kwargs):
@@ -42,7 +42,9 @@ class RevisionType(DjangoObjectType):
 revision_fields = merge_with_django_properties(RevisionType, dict(
     id=dict(create=DENY, update=DENY),
     date_created=dict(create=DENY, update=DENY),
-    user=dict(create=DENY, update=DENY),
+    # This is a Foreign Key. Graphene generates these relationships for us, but we need it here to
+    # support our Mutation subclasses and query_argument generation
+    user=dict(graphene_type=UserType, fields=user_fields, create=DENY, update=DENY),
     comment=dict(create=DENY, update=DENY)
 ))
 
