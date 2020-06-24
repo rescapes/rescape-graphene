@@ -7,7 +7,7 @@ from graphene import Int, Boolean, ObjectType, List, Field
 from graphene_django import DjangoObjectType
 from reversion.models import Version, Revision
 
-from rescape_graphene import DENY, merge_with_django_properties
+from rescape_graphene import DENY, merge_with_django_properties, REQUIRE
 
 
 def get_versioner(single_object_qs, versions_type, **kwargs):
@@ -38,10 +38,12 @@ class RevisionType(DjangoObjectType):
         model = Revision
 
 # Merge the Revision Django properties with our field config
+# Revision is managed by django-reversion and can never be updated from the API
 revision_fields = merge_with_django_properties(RevisionType, dict(
-    date_created=dict(),
-    user=dict(),
-    comment=dict(),
+    id=dict(create=DENY, update=DENY),
+    date_created=dict(create=DENY, update=DENY),
+    user=dict(create=DENY, update=DENY),
+    comment=dict(create=DENY, update=DENY)
 ))
 
 class VersionType(DjangoObjectType):
