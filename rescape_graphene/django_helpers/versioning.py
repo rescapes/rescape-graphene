@@ -61,7 +61,10 @@ def create_version_type(model_object_type, model_object_type_fields):
     # which probably isn't allowed
 
     def resolve_instance(parent, info, **kwargs):
-        return parent._object_version.object
+        instance = parent._object_version.object
+        # Inject the version so RevisionModelMixin knows how to handle
+        instance._version = parent
+        return instance
 
     version_type_model = type(
         f'VersionTypeModelFor{model_object_type.__name__}',
