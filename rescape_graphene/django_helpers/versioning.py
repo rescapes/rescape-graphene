@@ -108,6 +108,9 @@ def create_version_container_type(model_object_type, model_object_type_fields):
         )
     )
 
+    def x(*type_and_args):
+        return List(*type_and_args)
+
     # Merge the Revision Django properties with our field config
     versions_fields = merge_with_django_properties(VersionType, dict(
         # Versions
@@ -115,7 +118,7 @@ def create_version_container_type(model_object_type, model_object_type_fields):
             type=version_type,
             graphene_type=version_type,
             fields=version_type_fields,
-            type_modifier=lambda *type_and_args: List(*type_and_args)
+            type_modifier=x
         )
     ))
     return dict(type=versions_type_model, fields=versions_fields)
