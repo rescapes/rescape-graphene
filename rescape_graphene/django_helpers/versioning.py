@@ -1,13 +1,12 @@
 from operator import itemgetter
-from rescape_python_helpers import ramda as R
 
 import graphene
-from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
-from graphene import Int, Boolean, ObjectType, List, Field
+from graphene import Int, ObjectType, List, Field
 from graphene_django import DjangoObjectType
+from rescape_python_helpers import ramda as R
 from reversion.models import Version, Revision
 
-from rescape_graphene import DENY, merge_with_django_properties, REQUIRE, UserType, user_fields
+from rescape_graphene import DENY, merge_with_django_properties, UserType, user_fields
 
 
 def get_versioner(single_object_qs, versions_type, **kwargs):
@@ -37,6 +36,7 @@ class RevisionType(DjangoObjectType):
     class Meta:
         model = Revision
 
+
 # Merge the Revision Django properties with our field config
 # Revision is managed by django-reversion and can never be updated from the API
 revision_fields = merge_with_django_properties(RevisionType, dict(
@@ -48,6 +48,7 @@ revision_fields = merge_with_django_properties(RevisionType, dict(
     comment=dict(create=DENY, update=DENY)
 ))
 
+
 class VersionType(DjangoObjectType):
     id = graphene.Int(source='pk')
 
@@ -56,11 +57,9 @@ class VersionType(DjangoObjectType):
 
 
 def create_version_type(model_object_type, model_object_type_fields):
-
-
     # We can't assign Version as the Meta model because multiple classes would point at the same model,
     # which probably isn't allowed
-    versioned_type_mixin = type(
+    versioned_type_model = type(
         f'VersionedTypeMixinFor{model_object_type.__name__}',
         (ObjectType,),
         dict(
@@ -81,7 +80,7 @@ def create_version_type(model_object_type, model_object_type_fields):
         ),
         field_dict=model_object_type_fields
     ))
-    return dict(type=versioned_type_mixin, fields=versioned_fields)
+    return dict(type=versioned_type_model, fields=versioned_fields)
 
 
 def create_versions_type(model_object_type, model_object_type_fields):
@@ -92,13 +91,16 @@ def create_versions_type(model_object_type, model_object_type_fields):
     :return:
     """
 
-    versions_type_mixin = type(
-        f'VersionsTypeMixinFor{model_object_type.__name__}',
-        (ObjectType,)
-    )
-
     (version_type, version_type_fields) = itemgetter('type', 'fields')(
         create_version_type(model_object_type, model_object_type_fields)
+    )
+
+    versions_type_model = type(
+        f'VersionsTypeModelFor{model_object_type.__name__}',
+        (ObjectType,),
+        dict(
+            objects=List(version_type),
+        )
     )
 
     # Merge the Revision Django properties with our field config
@@ -109,7 +111,6 @@ def create_versions_type(model_object_type, model_object_type_fields):
             graphene_type=version_type,
             fields=version_type_fields,
             type_modifier=lambda *type_and_args: List(*type_and_args)
-        ),
-        **model_object_type_fields
+        )
     ))
-    return dict(type=versions_type_mixin, fields=versions_fields)
+    return dict(type=versions_type_model, fields=versions_fields)
