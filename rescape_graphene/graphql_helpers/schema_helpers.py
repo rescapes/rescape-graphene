@@ -1005,3 +1005,38 @@ def update_or_create_with_revision(model_class, update_or_create_values):
     with reversion.create_revision():
         return model_class.objects.update_or_create(**update_or_create_values)
 
+
+def deep_merge_existing_json(django_model, json_prop, data):
+    """
+        When mutating data, given a django model and a json prop with new data,
+        see if a version of the instance is already in the database and if so deep merge
+        what is in the database with data[json_prop], favoring the values in the latter
+        The existing instance is searched using id=data['id']
+        Note that in the deep merge we replace any old list with any new list. We have
+        to do this because it's impossible to know the caller's intention if they provide a new list of items,
+        so it's up to the caller to preserver the old list values. If the user doesn't provide a replacing
+        array the old one is maintained (I think)
+    :param django_model:
+    :param json_prop: The model prop that is a json field
+    :param data: The data of the entire model instance, optionally with id and json_prop. If json_prop is None
+    then nothing changes
+    :return: The merged dict of json_field
+    """
+
+    if R.has('id', data) and R.has(json_prop, data):
+        # New data gets priority, but this is a deep merge.
+        # List
+        return R.merge_deep(
+            django_model.objects.get(id=data['id']).data,
+            data[json_prop],
+            merger=Merger(
+                [
+                    (list, ["override"]),
+                    (dict, ["merge"])
+                ],
+                ["override"],
+                ["override"]
+            )
+        )
+    # Otherwise just return the new value if any
+    return R.prop_or(None, json_prop, data)
