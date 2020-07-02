@@ -198,8 +198,11 @@ def input_type_class(field_config, crud, parent_type_classes=[]):
             # such as referenced_in_create = REQUIRE, if the container has to have a reference when the
             # container is created
             R.map_with_obj(lambda key, value: R.omit(['create', 'update'], value)),
-            # Only take the id
-            R.pick(['id'])
+            # Only take the id, unless related_input=true for a field
+            lambda fields: R.concat(
+                [R.pick(['id'], fields)],
+                R.map(lambda field: R.prop_or(False, 'related_input', field), fields)
+            )
         )(field_config['fields']) if crud in [CREATE, UPDATE] else field_config['fields']
     ) if django_model_of_graphene_type(graphene_class) else field_config['fields']
 
@@ -796,6 +799,14 @@ def grapqhl_authorization_mutation(client, values):
     client.execute(mutation, variables=values)
 
 
+def capitalize_first_letter(str):
+    """
+    Capitalize the first letter since str.capitalize() lowercases everything first (yes Python sucks)
+    :param str:
+    :return:
+    """
+    return str[:1].upper() + str[1:]
+
 @R.curry
 def graphql_update_or_create(mutation_config, fields, client, values):
     """
@@ -823,8 +834,8 @@ def graphql_update_or_create(mutation_config, fields, client, values):
     # where className is the camel-case version of the given class name in mutation_config.class_name
     name = camelize(R.prop('class_name', mutation_config), False)
     mutation = print_ast(parse(''' 
-        mutation %sMutation {
-            %s(%sData: %s) {
+        mutation %sMutation($data: %sInputType!) {
+            %s(%sData: $data) {
                 %s {
                     %s 
                 }
@@ -836,12 +847,10 @@ def graphql_update_or_create(mutation_config, fields, client, values):
         # Actual schema function which matches something in the schema
         # This will be createClass or updateClass where class is the class name e.g. createFoo or updateFoo
         # Keep in mind that in python in the schema it will be defined create_foo or update_foo
+        capitalize_first_letter(R.item_path(['crud', update_or_create], mutation_config)),
         R.item_path(['crud', update_or_create], mutation_config),
         # The name of the InputDataType that is defined for this function, e.g. FooInputDataType
         name,
-        # Key values for what is being created or updated. This is dumped recursively and matches the structure
-        # of the InputDataType subclass
-        dump_graphql_data_object(values),
         # Again the name, this time used for the structure of the return query e.g. foo { ...return value ...}
         name,
         # The return query dump, which are all the fields available that aren't marked read=IGNORE.
@@ -849,8 +858,11 @@ def graphql_update_or_create(mutation_config, fields, client, values):
         # which isn't part of field_configs because Graphene handles ids automatically
         dump_graphql_keys(R.merge(dict(id=dict(type=graphene.Int)), fields)),
     )))
-    logger.debug('Mutation: %s' % mutation)
-    return client.execute(mutation)
+    # Key values for what is being created or updated. This is dumped recursively and matches the structure
+    # of the InputDataType subclass
+    variables = dump_graphql_data_object(dict(data=values))
+    logger.debug(f'Mutation: {mutation}\nVariables: {variables}')
+    return client.execute(mutation, variables=values)
 
 
 def process_query_value(model, value_dict):
