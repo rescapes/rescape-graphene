@@ -22,7 +22,7 @@ from graphql.language import ast
 from inflection import camelize
 from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs, flatten_dct_until
 
-from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object
+from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object
 
 logger = logging.getLogger('rescape_graphene')
 from django.conf import settings
@@ -199,9 +199,12 @@ def input_type_class(field_config, crud, parent_type_classes=[]):
             # container is created
             R.map_with_obj(lambda key, value: R.omit(['create', 'update'], value)),
             # Only take the id, unless related_input=true for a field
-            lambda fields: R.concat(
-                [R.pick(['id'], fields)],
-                R.map(lambda field: R.prop_or(False, 'related_input', field), fields)
+            lambda fields: R.merge(
+                R.pick(['id'], fields),
+                R.filter_dict(
+                    lambda name_field: R.compose(R.equals(ALLOW), R.prop_or(False, 'related_input'))(name_field[1]),
+                    fields
+                )
             )
         )(field_config['fields']) if crud in [CREATE, UPDATE] else field_config['fields']
     ) if django_model_of_graphene_type(graphene_class) else field_config['fields']
@@ -862,7 +865,7 @@ def graphql_update_or_create(mutation_config, fields, client, values):
     # of the InputDataType subclass
     variables = dump_graphql_data_object(dict(data=values))
     logger.debug(f'Mutation: {mutation}\nVariables: {variables}')
-    return client.execute(mutation, variables=values)
+    return client.execute(mutation, variables=dict(camelize_graphql_data_object(data=values)))
 
 
 def process_query_value(model, value_dict):

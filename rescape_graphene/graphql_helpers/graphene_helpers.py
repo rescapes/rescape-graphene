@@ -1,7 +1,7 @@
 from inflection import camelize
 from graphene import ObjectType, Scalar
 import inspect
-from rescape_python_helpers import ramda as R
+from rescape_python_helpers import ramda as R, map_keys_deep
 import numbers
 
 
@@ -59,15 +59,24 @@ def dump_graphene_type(key, value):
         R.isfunction(typ) or (inspect.isclass(typ) and issubclass(typ, (ObjectType))) else \
         camelize(key, False)
 
-def dump_graphql_data_object(dct):
+
+def camelize_graphql_data_object(dct):
     """
-        Convert a dict to a graphql input parameter key values in the form
-        Also camelizes keys if the are slugs
-        {key1: "string value1", key2: number2, ...}
+        Camelize a dict to a graphql input parameter key values in the form
     :param dct:
     :return:
     """
+    return map_keys_deep(lambda key, _: camelize(key), dct)
 
+
+def dump_graphql_data_object(dct):
+    """
+        Stringify a dict to a graphql input parameter key values in the form
+        Also camelizes keys if the are slugs
+        {"key1": "string value1", "key2": "number2", ...}
+    :param dct:
+    :return:
+    """
 
     if isinstance(dct, dict):
         return '{%s}' % R.join(
