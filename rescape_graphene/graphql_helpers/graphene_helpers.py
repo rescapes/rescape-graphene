@@ -66,7 +66,11 @@ def camelize_graphql_data_object(dct):
     :param dct:
     :return:
     """
-    return map_keys_deep(lambda key, _: camelize(key), dct)
+    return map_keys_deep(lambda key, _: R.when(
+        # Skip array indices
+        R.isinstance(str),
+        lambda k: camelize(k, False)
+    )(key), dct)
 
 
 def dump_graphql_data_object(dct):
