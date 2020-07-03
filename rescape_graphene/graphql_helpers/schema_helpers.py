@@ -952,11 +952,11 @@ def process_query_kwarg(model, key, value):
             )
         elif isinstance(model._meta._forward_fields_map[key], (ManyToManyField)):
             raise NotImplementedError("TODO need to implement stringify for ManyToMany")
-        elif R.contains(R.head(key.split('__')), R.map(R.prop('name'), model._meta.related_objects)):
-            # Reverse Many-to-Many relationships, the only thing I know how to support at this point is
-            # __in=[ids], although it might be possible to support other filters
-            # If ids aren't in the value list objects, this will fail
-            return [Q(**{key: R.map(R.prop('id'), value)})]
+    elif R.contains(R.head(key.split('__')), R.map(R.prop('name'), model._meta.related_objects)):
+        # Reverse Many-to-Many relationships, the only thing I know how to support at this point is
+        # __in=[ids], although it might be possible to support other filters
+        # If ids aren't in the value list objects, this will fail
+        return [Q(**{key: R.map(R.prop('id'), value)})]
 
     return [Q(**{key: value})]
 
