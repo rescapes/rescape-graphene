@@ -4,25 +4,24 @@ import logging
 import sys
 from decimal import Decimal
 
+import graphene
 import reversion
 from deepmerge import Merger
-from graphql.language.printer import print_ast
-import graphene
 from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField, ForeignKey, \
     GeometryCollectionField
-from graphql import parse
-
-from rescape_python_helpers import ramda as R, memoize
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
     BigIntegerField, NullBooleanField, Q
 from graphene import Scalar, InputObjectType, ObjectType
+from graphql import parse
 from graphql.language import ast
+from graphql.language.printer import print_ast
 from inflection import camelize
+from rescape_python_helpers import ramda as R, memoize
 from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs, flatten_dct_until
 
-from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object
+from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda
 
 logger = logging.getLogger('rescape_graphene')
 from django.conf import settings
@@ -182,7 +181,9 @@ def input_type_class(field_config, crud, parent_type_classes=[]):
     # Get the Graphene type. This comes from graphene_type if the class containing the field is a Django Model,
     # It defaults to type, which is what we expect if we didn't have to use a graphene_type to distinguish
     # from the underlying Django type
-    graphene_class = field_config['graphene_type'] or field_config['type']
+    graphene_class = call_if_lambda(field_config['graphene_type'] or field_config['type'])
+    fields = call_if_lambda(field_config['fields'])
+
     # Make it an array if not
     modified_parent_type_classes = parent_type_classes if R.isinstance((list, tuple), parent_type_classes) else [
         parent_type_classes]
@@ -206,8 +207,8 @@ def input_type_class(field_config, crud, parent_type_classes=[]):
                     fields
                 )
             )
-        )(field_config['fields']) if crud in [CREATE, UPDATE] else field_config['fields']
-    ) if django_model_of_graphene_type(graphene_class) else field_config['fields']
+        )(fields) if crud in [CREATE, UPDATE] else fields
+    ) if django_model_of_graphene_type(graphene_class) else fields
 
     input_fields = input_type_fields(
         input_type_field_configs,
@@ -336,9 +337,9 @@ def process_field(field_to_unique_field_groups, field, field_dict_value, parent_
     :return: A dict with the unique property and anything else we need
     """
     unique = R.compact([
-        PRIMARY if field.primary_key else None,
-        UNIQUE if field.unique else None,
-        R.prop_or(None, field.attname, field_to_unique_field_groups)
+        PRIMARY if R.has('primary_key', field) else None,
+        UNIQUE if R.has('unique', field) else None,
+        R.prop_or(None, R.has('attname', field), field_to_unique_field_groups)
     ])
     # Normally the field_dict_value will delegate the type to the underlying Django model
     # In cases where we need an explicit type, because the field represents something modeled outside django,
@@ -385,7 +386,7 @@ def parse_django_class(model, field_dict, parent_type_classes=[]):
         # Only accept model fields that are defined in field_dict
         R.filter(
             lambda field: field.name in field_dict,
-            R.concat(model._meta.fields, model._meta.many_to_many)
+            R.concat(model._meta.fields, R.concat(model._meta.many_to_many, model._meta.related_objects))
         )
     ))
 
@@ -523,7 +524,7 @@ def allowed_filter_arguments(fields_dict, graphene_type):
                 R.not_func(R.prop_eq_or_in(READ, DENY, key_value[1]))
             )
         )
-    )(fields_dict)
+    )(call_if_lambda(fields_dict))
 
 
 def process_filter_kwargs(model, kwargs):
@@ -583,8 +584,18 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud):
         fields = R.prop('fields', field_config)
         resolved_graphene_type = input_type_class(dict(graphene_type=graphene_type, fields=fields), crud,
                                                   parent_type_classes)
+    elif R.isfunction(graphene_type) and \
+            R.compose(R.equals(0), R.length, R.prop('parameters'), inspect.signature)(graphene_type):
+        # If out graphene_type is a no arg lambda it means it needs lazy evaluation to avoid circular imports
+        # This is only true for representing reverse relationships on django models
+        _graphene_type = graphene_type()
+        _fields = R.compose(call_if_lambda, R.prop('fields'))(field_config)
+        resolved_graphene_type = input_type_class(
+            dict(graphene_type=_graphene_type, fields=_fields), crud,
+            parent_type_classes
+        )
     elif R.isfunction(graphene_type):
-        # If a lambda is returned we have an InputType subclass that needs to know the crud type
+        # If a lambda is returned with params we have an InputType subclass that needs to know the crud type
         resolved_graphene_type = graphene_type(crud)
     else:
         # Otherwise we have a simple type
@@ -601,6 +612,7 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud):
         )
 
 
+
 def input_type_fields(fields_dict, crud, parent_type_classes=[]):
     """
     :param fields_dict: The fields_dict for the Django model or json data
@@ -615,7 +627,7 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[]):
         # This means that if the user tries to pass these fields to graphql an error will occur
         R.filter_dict(
             lambda key_value: R.not_func(R.prop_eq_or(False, crud, DENY, key_value[1])),
-            fields_dict
+            call_if_lambda(fields_dict)
         )
     )
 
@@ -734,7 +746,16 @@ def graphql_query(graphene_type, fields, query_name):
         # Map the field_type_lookup to the right graphene type, either a primitive like 'String' or a complex
         # read input type like 'FeatureCollectionDataTypeofFooTypeRelatedReadInputType'
         variable_definitions = R.map_key_values(
-            lambda k, v: [camelize(k, False), field_type_lookup[k]._meta.name],
+            lambda k, v: [
+                camelize(k, False),
+                R.if_else(
+                    lambda lookup: R.has('_meta', lookup),
+                    # Field Case
+                    lambda lookup: lookup._meta.name,
+                    # List Case
+                    lambda lookup: f'[{lookup._of_type._meta.name}]'
+                )(field_type_lookup[k])
+            ],
             kwargs['variables']
         ) if R.has('variables', kwargs) else {}
 
@@ -763,7 +784,7 @@ def graphql_query(graphene_type, fields, query_name):
                     lambda key: '%s: $%s' % (key, key),
                     R.keys(variable_definitions))
             ) if variable_definitions else '',
-            dump_graphql_keys(field_overrides or fields)
+            dump_graphql_keys(field_overrides or call_if_lambda(fields))
         )))
 
         # Update the variable names to have camel case instead of pythonic slugs
@@ -809,6 +830,7 @@ def capitalize_first_letter(str):
     :return:
     """
     return str[:1].upper() + str[1:]
+
 
 @R.curry
 def graphql_update_or_create(mutation_config, fields, client, values):
@@ -865,7 +887,7 @@ def graphql_update_or_create(mutation_config, fields, client, values):
     # of the InputDataType subclass
     variables = dump_graphql_data_object(dict(data=values))
     logger.debug(f'Mutation: {mutation}\nVariables: {variables}')
-    return client.execute(mutation, variables=dict(camelize_graphql_data_object(data=values)))
+    return client.execute(mutation, variables=camelize_graphql_data_object(dict(data=values)))
 
 
 def process_query_value(model, value_dict):
@@ -889,9 +911,9 @@ def process_query_value(model, value_dict):
 def process_query_kwarg(model, key, value):
     """
         Process a query kwarg. The key is always a string and the value can be a scalar or a dict representing the
-        model given by model. E.g. model: User, key: 'user', value: {id: 1, username: 'jo'} or
+        given model. E.g. model: User, key: 'user', value: {id: 1, username: 'jo'} or
         model User, key: 'user', value: {id: 1, group: {id: 2}}
-        TODO I haven't made this work with ManyToMany yet, such as
+        This works in a limited capacity with ManyToMany. You can pass id__in=[{id: x1, id: x2, ...}]
         model User, key: 'user', value: {id: 1, groups: [{id: 2}, {name: 'fellas'}]}. This requires using __in
         for the django key and other fancy stuff
     :param model:
@@ -930,6 +952,11 @@ def process_query_kwarg(model, key, value):
             )
         elif isinstance(model._meta._forward_fields_map[key], (ManyToManyField)):
             raise NotImplementedError("TODO need to implement stringify for ManyToMany")
+        elif R.contains(R.head(key.split('__')), R.map(R.prop('name'), model._meta.related_objects)):
+            # Reverse Many-to-Many relationships, the only thing I know how to support at this point is
+            # __in=[ids], although it might be possible to support other filters
+            # If ids aren't in the value list objects, this will fail
+            return [Q(**{key: R.map(R.prop('id'), value)})]
 
     return [Q(**{key: value})]
 

@@ -4,6 +4,14 @@ import inspect
 from rescape_python_helpers import ramda as R, map_keys_deep
 import numbers
 
+def call_if_lambda(maybe_lambda):
+    """
+        When fields_dict or graphene_type is a lambda it means it needs lazy evaluation to prevent circular dependencies
+    :param maybe_lambda:
+    :return:
+    """
+    return R.when(R.isfunction, lambda f: f())(maybe_lambda)
+
 
 def handleGrapheneTypes(key, value):
     """
@@ -14,7 +22,7 @@ def handleGrapheneTypes(key, value):
     """
     return '''%s {
         %s
-    }''' % (camelize(key, False), dump_graphql_keys(R.prop('fields', value)))
+    }''' % (camelize(key, False), dump_graphql_keys(call_if_lambda(R.prop('fields', value))))
 
 
 def dump_graphql_keys(dct):
