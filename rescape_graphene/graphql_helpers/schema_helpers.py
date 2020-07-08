@@ -7,7 +7,7 @@ from decimal import Decimal
 import graphene
 import reversion
 from deepmerge import Merger
-from django.contrib.gis.db.models import OneToOneField, ManyToManyField, ForeignKey, \
+from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField, ForeignKey, \
     GeometryCollectionField
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
@@ -19,7 +19,7 @@ from graphql.language import ast
 from graphql.language.printer import print_ast
 from inflection import camelize
 from rescape_python_helpers import ramda as R, memoize
-from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct_until
+from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs, flatten_dct_until
 
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda
 
@@ -156,16 +156,19 @@ class DataPointRelatedCreateInputType(InputObjectType):
     id = graphene.String(required=True)
 
 
-@memoize(map_args=lambda args: [
+def _memoize(args):
+   return [
     # Only use graphene_type here. type is a function and can't be serialized
     args[0]['graphene_type'],
     args[1],
     # TODO We use the parent_type_class to make each type unique. I don't know why graphene won't let us reuse
     # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
     # of a Region or the user of a Group.
-    args[2] if R.isinstance((list, tuple), args[2]) else [args[2]]
-])
-def input_type_class(field_config, crud, parent_type_classes=[]):
+    args[2] if R.lte(3, R.length(args)) and R.isinstance((list, tuple), args[2]) else [args[2]],
+    args[3] if R.lte(2, R.length(args)) else False
+]
+@memoize(map_args=_memoize)
+def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_only=False):
     """
     An InputObjectType subclass for use as nested query argument types and mutation argument types
     The subclass is dynamically created based on the field_dict_value['graphene_type'] and the crud type.
@@ -221,6 +224,10 @@ def input_type_class(field_config, crud, parent_type_classes=[]):
     # This doesn't apply to Update and Create input types, since we never filter during those operations
     filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if R.equals(READ, crud) else {}
 
+    combined_fields = R.merge(filter_fields, input_fields)
+    if allowed_fields_only:
+        return combined_fields
+
     return type(
         '%s%sRelated%sInputType' % (
             graphene_class.__name__,
@@ -228,9 +235,16 @@ def input_type_class(field_config, crud, parent_type_classes=[]):
             R.join('of', R.concat([''], modified_parent_type_classes)),
             camelize(crud, True)),
         (InputObjectType,),
-        # Merge the filter_fields with the input_fields. The input_fields are the top-level fields
-        # and migth be array types, so they get priority over what filter_fields generates
-        R.merge(filter_fields, input_fields)
+        # RECURSION
+        # Create Graphene types for the InputType based on the field_dict_value.fields
+        # This will typically just be an id field to reference an existing object.
+        # If the graphene type is based on a Django model and this is and update/create crud construction,
+        # we want to limit the fields to the id. We never want a mutation to be able to modify a Django object
+        # referenced in json data. We only want the mutation to be allowed to specify the id to reference an existing
+        # Django object.
+        #
+        # Otherwise field_dict_value['fields'] are independent of a Django model and each have their own type property
+        combined_fields
     )
 
 
@@ -497,22 +511,33 @@ def add_filters(argument_dict):
     )(argument_dict)
 
 
+def top_level_allowed_filter_arguments(fields, graphene_type):
+    """
+        For top-level calls, not recursion
+        Like allowed_query_and_read_arguments but only used for arguments and adds filter variables like id_contains.
+        Note that django needs __ so these are converted for resolvers. The graphql interface converts them to
+        camel case
+    :param fields: The fields for the graphene type
+    :param graphen_type: The graphene type
+    :return: dict of field keys and there graphene type, either a primitive or input type
+    """
+    return input_type_class(dict(fields=fields, graphene_type=graphene_type), 'read', [], True)
+
 def allowed_filter_arguments(fields_dict, graphene_type):
     """
         Like allowed_query_and_read_arguments but only used for arguments and adds filter variables like id_contains.
         Note that django needs __ so these are converted for resolvers. The graphql interface converts them to
         camel case
     :param fields_dict: The fields_dict for the Django model
-    :param graphene_type: Type used for embedded input class naming
+    :param graphen_type: Type used for embedded input class naming
     :return: dict of field keys and there graphene type, either a primitive or input type
     """
     return R.compose(
         lambda argument_dict: add_filters(argument_dict),
         R.map_dict(resolve_type(graphene_type)),
         R.filter_dict(
-            lambda key_value:
             # Don't allow DENYed READ fields to be used for querying
-            R.and_func(
+            lambda key_value: R.and_func(
                 True,
                 R.not_func(R.prop_eq_or_in(READ, DENY, key_value[1]))
             )
@@ -726,7 +751,7 @@ def graphql_query(graphene_type, fields, query_name):
     The only key allowed is variables, which contains param key values. Example: variables={'user': 'Peter'}
     This results in query whatever(id: String!) { query_name(id: id) ... }
     """
-    field_type_lookup = allowed_filter_arguments(fields, graphene_type)
+    field_type_lookup = top_level_allowed_filter_arguments(fields, graphene_type)
 
     def form_query(client, field_overrides={}, **kwargs):
         """
@@ -900,6 +925,8 @@ def process_query_value(model, value_dict):
         )
     )
 
+def not_ends_with_contains(key):
+    return not key.endswith('contains')
 
 def process_query_kwarg(model, key, value):
     """
@@ -917,7 +944,8 @@ def process_query_kwarg(model, key, value):
     """
 
     if key.endswith('__contains'):
-        # Don't modify json contains searches. contains allows us to match on a complex json value
+        # Don't modify json contains searches
+        # TODO this doesn't make sense because condition below is supposed to handle it
         return [Q(**{key: value})]
     elif key.endswith('__not'):
         # If the key ends in not it tells us to convert to a ~Q(key) expression
@@ -929,14 +957,15 @@ def process_query_kwarg(model, key, value):
         # This is just one way of filtering json. We can also do it with the argument structure
         return R.compose(
             lambda dct: R.map_with_obj_to_values(lambda key, value: Q(**{key: value}), dct),
-            lambda dct: flatten_dct_until(dct, lambda key: not key.endswith('contains'), '__')
+            lambda dct: flatten_dct_until(dct, lambda key: not isinstance(str, key) and not_ends_with_contains(key), '__')
         )({key: value})
     elif R.has(key, model._meta._forward_fields_map):
         # If it's a model key
         if isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField, ManyToManyField)):
             # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
             related_model = model._meta._forward_fields_map[key].related_model
-            q_expressions = process_query_value(related_model, value)
+            # values have to be arrays, so iterate over them
+            q_expressions = R.chain(lambda v: process_query_value(related_model, v), value)
             return R.map(
                 # TODO we assume simple Q expressions with ony one child at children[0]
                 lambda q_expression: Q(**{f'{key}__{q_expression.children[0][0]}': q_expression.children[0][1]}),
