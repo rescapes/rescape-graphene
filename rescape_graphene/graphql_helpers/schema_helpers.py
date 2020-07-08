@@ -7,7 +7,7 @@ from decimal import Decimal
 import graphene
 import reversion
 from deepmerge import Merger
-from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField, ForeignKey, \
+from django.contrib.gis.db.models import OneToOneField, ManyToManyField, ForeignKey, \
     GeometryCollectionField
 from django.contrib.postgres.fields import JSONField
 from django.db.models import AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
@@ -19,7 +19,7 @@ from graphql.language import ast
 from graphql.language.printer import print_ast
 from inflection import camelize
 from rescape_python_helpers import ramda as R, memoize
-from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs, flatten_dct_until
+from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct_until
 
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda
 
@@ -228,16 +228,9 @@ def input_type_class(field_config, crud, parent_type_classes=[]):
             R.join('of', R.concat([''], modified_parent_type_classes)),
             camelize(crud, True)),
         (InputObjectType,),
-        # RECURSION
-        # Create Graphene types for the InputType based on the field_dict_value.fields
-        # This will typically just be an id field to reference an existing object.
-        # If the graphene type is based on a Django model and this is and update/create crud construction,
-        # we want to limit the fields to the id. We never want a mutation to be able to modify a Django object
-        # referenced in json data. We only want the mutation to be allowed to specify the id to reference an existing
-        # Django object.
-        #
-        # Otherwise field_dict_value['fields'] are independent of a Django model and each have their own type property
-        R.merge(input_fields, filter_fields)
+        # Merge the filter_fields with the input_fields. The input_fields are the top-level fields
+        # and migth be array types, so they get priority over what filter_fields generates
+        R.merge(filter_fields, input_fields)
     )
 
 
@@ -510,7 +503,7 @@ def allowed_filter_arguments(fields_dict, graphene_type):
         Note that django needs __ so these are converted for resolvers. The graphql interface converts them to
         camel case
     :param fields_dict: The fields_dict for the Django model
-    :param graphen_type: Type used for embedded input class naming
+    :param graphene_type: Type used for embedded input class naming
     :return: dict of field keys and there graphene type, either a primitive or input type
     """
     return R.compose(
@@ -924,8 +917,7 @@ def process_query_kwarg(model, key, value):
     """
 
     if key.endswith('__contains'):
-        # Don't modify json contains searches
-        # TODO this doesn't make sense because condition below is supposed to handle it
+        # Don't modify json contains searches. contains allows us to match on a complex json value
         return [Q(**{key: value})]
     elif key.endswith('__not'):
         # If the key ends in not it tells us to convert to a ~Q(key) expression
@@ -941,7 +933,7 @@ def process_query_kwarg(model, key, value):
         )({key: value})
     elif R.has(key, model._meta._forward_fields_map):
         # If it's a model key
-        if isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField)):
+        if isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField, ManyToManyField)):
             # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
             related_model = model._meta._forward_fields_map[key].related_model
             q_expressions = process_query_value(related_model, value)

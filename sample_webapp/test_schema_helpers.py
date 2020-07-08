@@ -48,7 +48,7 @@ class SchemaHelpersTypeCase(TestCase):
                       # Pretend this is a saved user id
                       user=dict(id=5),
                       data =dict(example=2.2))
-        self.assertMatchSnapshot(input_type_parameters_for_update_or_create(foo_fields, foo_values))
+        self.assertMatchSnapshot(R.omit(['password'], input_type_parameters_for_update_or_create(foo_fields, foo_values)))
 
     # def test_delete(self):
     #    self.assertMatchSnapshot(delete_fields(user_fields))
