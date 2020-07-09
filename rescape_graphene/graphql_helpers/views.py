@@ -1,4 +1,5 @@
 # https://gist.githubusercontent.com/smmoosavi/033deffe834e6417ed6bb55188a05c88/raw/3393e415f9654f849a89d7e33cfcacaff0372cdd/views.py
+import logging
 import traceback
 
 from django.conf import settings
@@ -12,7 +13,7 @@ from rest_framework import exceptions
 from rest_framework_jwt.authentication import JSONWebTokenAuthentication
 from graphene_django.views import GraphQLView
 import simplejson as json
-
+log = logging.getLogger('rescape_graphene')
 
 def encode_code(code):
     if code is None:
@@ -63,6 +64,19 @@ def format_located_error(error):
 
 
 class SafeGraphQLView(GraphQLView):
+    graphiql_template = "graphene_sub/graphiql.html"
+
+    def execute_graphql_request(self, *args, **kwargs):
+        """Extract any exceptions and send them to Sentry"""
+        result = super().execute_graphql_request(*args, **kwargs)
+        if result.errors:
+            for error in result.errors:
+                log.exception(error)
+            for error in result.errors:
+                # Raise the first
+                raise error
+        return result
+
     @staticmethod
     def format_error(error):
         try:

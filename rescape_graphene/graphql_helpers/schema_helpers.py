@@ -19,7 +19,8 @@ from graphql.language import ast
 from graphql.language.printer import print_ast
 from inflection import camelize
 from rescape_python_helpers import ramda as R, memoize
-from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs, flatten_dct_until
+from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs, flatten_dct_until, \
+    to_array_if_not
 
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda
 
@@ -787,11 +788,12 @@ def graphql_query(graphene_type, fields, query_name):
                 )
             )
         )
-        query = print_ast(parse('''query someMadeUpString%s { 
+        query = print_ast(parse('''query %s%s { 
                 %s%s {
                     %s
                 }
             }''' % (
+            query_name,
             '(%s)' % formatted_definitions if formatted_definitions else '',
             query_name,
             '(%s)' %
@@ -814,7 +816,7 @@ def graphql_query(graphene_type, fields, query_name):
             ),
             kwargs
         )
-        logger.debug(f'Query: {query}\nKwargs: {R.dump_json(camelized_kwargs)}')
+        logger.debug(f'Query: {query}\nKwargs: {R.dump_json(R.prop("variables", camelized_kwargs))}')
         return client.execute(
             query,
             **camelized_kwargs
@@ -964,15 +966,18 @@ def process_query_kwarg(model, key, value):
         if isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField, ManyToManyField)):
             # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
             related_model = model._meta._forward_fields_map[key].related_model
-            # values have to be arrays, so iterate over them
-            q_expressions = R.chain(lambda v: process_query_value(related_model, v), value)
+            # Convert the values to array if not and chain to flatten
+            q_expressions = R.chain(
+                lambda v: process_query_value(related_model, v),
+                to_array_if_not(value)
+            )
             return R.map(
                 # TODO we assume simple Q expressions with ony one child at children[0]
                 lambda q_expression: Q(**{f'{key}__{q_expression.children[0][0]}': q_expression.children[0][1]}),
                 q_expressions
             )
         elif isinstance(model._meta._forward_fields_map[key], (ManyToManyField)):
-            raise NotImplementedError("TODO need to implement stringify for ManyToMany")
+            raise NotImplementedError(f'Unrecognized field type for {model._meta._forward_fields_map[key]}')
     elif R.contains(R.head(key.split('__')), R.map(R.prop('name'), model._meta.related_objects)):
         # Reverse Many-to-Many relationships, the only thing I know how to support at this point is
         # __in=[ids], although it might be possible to support other filters
