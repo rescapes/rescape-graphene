@@ -158,16 +158,18 @@ class DataPointRelatedCreateInputType(InputObjectType):
 
 
 def _memoize(args):
-   return [
-    # Only use graphene_type here. type is a function and can't be serialized
-    args[0]['graphene_type'],
-    args[1],
-    # TODO We use the parent_type_class to make each type unique. I don't know why graphene won't let us reuse
-    # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
-    # of a Region or the user of a Group.
-    args[2] if R.lte(3, R.length(args)) and R.isinstance((list, tuple), args[2]) else [args[2]],
-    args[3] if R.lte(2, R.length(args)) else False
-]
+    return [
+        # Only use graphene_type here. type is a function and can't be serialized
+        args[0]['graphene_type'],
+        args[1],
+        # TODO We use the parent_type_class to make each type unique. I don't know why graphene won't let us reuse
+        # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
+        # of a Region or the user of a Group.
+        args[2] if R.lte(3, R.length(args)) and R.isinstance((list, tuple), args[2]) else [args[2]],
+        args[3] if R.lte(2, R.length(args)) else False
+    ]
+
+
 @memoize(map_args=_memoize)
 def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_only=False):
     """
@@ -524,6 +526,7 @@ def top_level_allowed_filter_arguments(fields, graphene_type):
     """
     return input_type_class(dict(fields=fields, graphene_type=graphene_type), 'read', [], True)
 
+
 def allowed_filter_arguments(fields_dict, graphene_type):
     """
         Like allowed_query_and_read_arguments but only used for arguments and adds filter variables like id_contains.
@@ -629,7 +632,6 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud):
             # This means if a user omits these fields an error will occur
             required=R.prop_eq_or_in_or(False, crud, REQUIRE, field_config)
         )
-
 
 
 def input_type_fields(fields_dict, crud, parent_type_classes=[]):
@@ -927,8 +929,10 @@ def process_query_value(model, value_dict):
         )
     )
 
+
 def not_ends_with_contains(key):
     return not key.endswith('contains')
+
 
 def process_query_kwarg(model, key, value):
     """
@@ -959,7 +963,10 @@ def process_query_kwarg(model, key, value):
         # This is just one way of filtering json. We can also do it with the argument structure
         return R.compose(
             lambda dct: R.map_with_obj_to_values(lambda key, value: Q(**{key: value}), dct),
-            lambda dct: flatten_dct_until(dct, lambda key: not isinstance(str, key) and not_ends_with_contains(key), '__')
+            lambda dct: flatten_dct_until(
+                dct,
+                lambda key, value: not isinstance(str, key) and not_ends_with_contains(key), '__'
+            )
         )({key: value})
     elif R.has(key, model._meta._forward_fields_map):
         # If it's a model key

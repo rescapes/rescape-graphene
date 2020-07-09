@@ -19,7 +19,7 @@ This updates requirements.txt to their latest version
 
 Install requirements with latest versions
 ```bash
-pur -r requirements.txt && $VIRTUAL_ENV/bin/pip install --no-cache-dir  --upgrade -r requirements.txt
+pur -r requirements.txt && $VIRTUAL_ENV/bin/pip3 install --no-cache-dir  --upgrade -r requirements.txt
 ```
 
 Add the following to the bottom $VIRTUAL_ENV/bin/activate to setup the PYTHONPATH.
