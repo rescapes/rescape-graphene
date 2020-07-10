@@ -933,6 +933,8 @@ def process_query_value(model, value_dict):
 def not_ends_with_contains(key):
     return not key.endswith('contains')
 
+def _flatten_until(key, value):
+    return R.isinstance(str, key) and not R.isinstance(list, value)
 
 def process_query_kwarg(model, key, value):
     """
@@ -949,7 +951,7 @@ def process_query_kwarg(model, key, value):
     :return: A list of Q expressions like Q(x__y=1) and ~Q(x__contains='adf')
     """
 
-    if key.endswith('__contains'):
+    if False and key.endswith('__contains'):
         # Don't modify json contains searches
         # TODO this doesn't make sense because condition below is supposed to handle it
         return [Q(**{key: value})]
@@ -965,7 +967,8 @@ def process_query_kwarg(model, key, value):
             lambda dct: R.map_with_obj_to_values(lambda key, value: Q(**{key: value}), dct),
             lambda dct: flatten_dct_until(
                 dct,
-                lambda key, value: not isinstance(str, key) and not_ends_with_contains(key), '__'
+                _flatten_until,
+                '__'
             )
         )({key: value})
     elif R.has(key, model._meta._forward_fields_map):
