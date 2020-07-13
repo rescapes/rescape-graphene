@@ -1,4 +1,5 @@
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
+from rescape_python_helpers import ramda as R
 from graphene import Int, Boolean, ObjectType, List
 
 from rescape_graphene import DENY
@@ -73,3 +74,36 @@ def create_paginated_type_mixin(model_object_type, model_object_type_fields):
     )
 
     return dict(type=paginated_type_mixin, fields=paginated_fields)
+
+
+def resolve_paginated_for_type(paginated_type, type_resolver, **kwargs):
+    """
+        Resolver for paginated types
+    :param paginated_type: The paginated Type, e.g. LocationPaginationType
+    :param type_resolver: The resolver for the non-paginated type, e.g. location_resolver
+    :param kwargs: The kwargs Array of prop sets for the non-paginated objects in 'objects'.
+    Normally it's just a 1-item array.
+    Other required kwargs are for pagination are page_size and page
+    :return: The paginated query
+    """
+
+    def reduce_or(q_expressions):
+        return R.reduce(
+            lambda qs, q: qs | q if qs else q,
+            None,
+            q_expressions
+        )
+
+    objects = R.prop_or({}, 'objects', kwargs)
+
+    instances = reduce_or(R.map(
+        lambda obj: type_resolver('filter', **obj),
+        objects
+    ))
+
+    return get_paginator(
+        instances,
+        R.prop('page_size', kwargs),
+        R.prop('page', kwargs),
+        paginated_type
+    )
