@@ -55,17 +55,14 @@ class FooType(DjangoObjectType):
 # since graphene just reads the underlying. Django model to generate the fields
 FooType._meta.fields['data'] = Field(
     FooDataType,
-    allowed_filter_arguments(foo_data_fields, FooDataType),
     resolver=resolver_for_dict_field
 )
 FooType._meta.fields['geojson'] = Field(
     FeatureCollectionDataType,
-    allowed_filter_arguments(feature_collection_data_type_fields, FeatureCollectionDataType),
     resolver=resolver_for_dict_field
 )
 FooType._meta.fields['geo_collection'] = Field(
     FeatureCollectionDataType,
-    allowed_filter_arguments(feature_collection_data_type_fields, FeatureCollectionDataType),
     resolver=resolver_for_feature_collection
 )
 
