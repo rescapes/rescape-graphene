@@ -6,19 +6,19 @@ from graphql_jwt.decorators import login_required, staff_member_required
 from rescape_python_helpers import ramda as R
 
 from rescape_graphene.graphql_helpers.schema_helpers import process_filter_kwargs, \
-    allowed_filter_arguments
+    top_level_allowed_filter_arguments
 from rescape_graphene.schema_models.user_schema import UserType, CreateUser, UpdateUser, user_fields
 
 
 class Query(ObjectType):
     current_user = graphene.Field(
         UserType,
-        **allowed_filter_arguments(user_fields, UserType)
+        **top_level_allowed_filter_arguments(user_fields, UserType)
     )
 
     users = graphene.List(
         UserType,
-        **allowed_filter_arguments(user_fields, UserType)
+        **top_level_allowed_filter_arguments(user_fields, UserType)
     )
 
     @staff_member_required
