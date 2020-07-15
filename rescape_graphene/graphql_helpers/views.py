@@ -71,9 +71,6 @@ class SafeGraphQLView(GraphQLView):
         if result.errors:
             for error in result.errors:
                 log.exception(error)
-            for error in result.errors:
-                # Raise the first
-                raise error
         return result
 
     @staticmethod

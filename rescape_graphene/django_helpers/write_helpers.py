@@ -5,7 +5,8 @@ from rescape_python_helpers import ramda as R
 
 
 def default_strategy(matches, prop_value, i):
-    return '%s%s' % (prop_value, i + 1)
+    # Assume we need to increment beyond matches length
+    return '%s%s' % (prop_value, i + R.length(matches) + 1)
 
 
 @R.curry
@@ -44,7 +45,7 @@ def increment_prop_until_unique(django_class, strategy, prop, additional_filter_
                 lambda f: f(django_instance_data)
             )(additional_filter_props or {})
         )
-    ).values_list(prop, flat=True)
+    ).values_list(prop, flat=True).order_by(prop)
 
     success = prop_value
     for i, matching_key in enumerate(matching_values):

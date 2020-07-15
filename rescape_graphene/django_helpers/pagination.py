@@ -16,7 +16,7 @@ def get_paginator(qs, page_size, page, paginated_type, **kwargs):
     :param kwargs: Additional kwargs to pass paginated_type function, usually unneeded
     :return:
     """
-    p = Paginator(qs, page_size)
+    p = Paginator(qs.order_by('id'), page_size)
     try:
         page_obj = p.page(page)
     except PageNotAnInteger:
