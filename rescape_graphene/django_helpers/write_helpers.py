@@ -1,12 +1,12 @@
 import inspect
+import uuid
 
 from django.db.models import Q
 from rescape_python_helpers import ramda as R
 
 
 def default_strategy(matches, prop_value, i):
-    # Assume we need to increment beyond matches length
-    return '%s%s' % (prop_value, i + R.length(matches) + 1)
+    return '%s%s' % (prop_value, str(uuid.uuid1())[0:10])
 
 
 @R.curry
