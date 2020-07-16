@@ -70,6 +70,7 @@ class SafeGraphQLView(GraphQLView):
         result = super().execute_graphql_request(*args, **kwargs)
         if result.errors:
             for error in result.errors:
+                # NO way to get stack trace of the original error grrrr
                 log.exception(error)
         return result
 

@@ -56,7 +56,9 @@ DELETE = 'delete'
 # From django-filters. Whenever graphene supports filtering without Relay we can get rid of this here
 # Educated guesss about what types for each to support. Django/Postgres might support fewer or more of these
 # combinations than I'm aware of
-# Skip if testing. These take forever
+# Skip most if testing. These take forever
+# Results in a dict keyed by the filter suffix and valued by a dict of the allowed types and possibly a type_modifier
+# lambda to create a grapheene.List of the given type for the 'in' and 'range' suffixes
 FILTER_FIELDS = R.compose(
     # Create not versions of each. This is a pseudo syntax not supported by Django. Django uses exclude() or ~Q(expr).
     # We can't create an equivalent here with keys, so we use _not and convert it to ~Q(expr) later
@@ -930,11 +932,19 @@ def process_query_value(model, value_dict):
     )
 
 
-def not_ends_with_contains(key):
-    return not key.endswith('contains')
-
 def _flatten_until(key, value):
     return R.isinstance(str, key) and not R.isinstance(list, value)
+
+
+def _key_matches_filter_field(key):
+    """
+        Returns true if the key string ends with a FILTER_FIELD like contains or range or in
+    :param key:
+    :return:
+    """
+    last_key = R.last(key.split('__'))
+    return R.has(last_key, FILTER_FIELDS)
+
 
 def process_query_kwarg(model, key, value):
     """
@@ -960,11 +970,22 @@ def process_query_kwarg(model, key, value):
         k = key.replace('__not', '')
         return [~Q(**{k: value})]
     if isinstance(R.prop_or(None, key, model._meta._forward_fields_map), (JSONField,)):
-        # Small correction here to change the data filter to data__contains to handle any json
-        # https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
-        # This is just one way of filtering json. We can also do it with the argument structure
         return R.compose(
-            lambda dct: R.map_with_obj_to_values(lambda key, value: Q(**{key: value}), dct),
+            lambda dct: R.map_with_obj_to_values(
+                lambda key, value: Q(**{key: value}),
+                dct
+            ),
+            # Small correction here to change the data filter to data... to data...__contains to handle any json
+            # https://docs.djangoproject.com/en/2.0/ref/contrib/postgres/fields/#std:fieldlookup-hstorefield.contains
+            # If the value is an object or array,
+            # add __contains to the end there isn't already a filter suffix
+            # __contains allows matching an object or array without the array orders having to match
+            lambda dct: R.map_keys(
+                lambda key, value: R.unless(
+                    lambda d: isinstance(d['value'], (dict, list)) and not _key_matches_filter_field(d['key'])
+                )(dict(key=key, value=value)),
+                dct
+            ),
             lambda dct: flatten_dct_until(
                 dct,
                 _flatten_until,

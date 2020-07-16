@@ -171,7 +171,7 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
         assert not R.prop('errors', new_result), R.dump_json(R.prop('errors', new_result))
         created_too = result_path_partial(new_result)
         assert created['id'] != created_too['id']
-        assert created_too['key'] == 'luxembourg1'
+        assert created_too['key'].startswith('luxembourg') and created_too['key'] != 'luxembourg'
 
     def test_update(self):
         values = dict(username="dino", firstName='T', lastName='Rex',
