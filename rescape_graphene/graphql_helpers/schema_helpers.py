@@ -980,10 +980,11 @@ def process_query_kwarg(model, key, value):
             # If the value is an object or array,
             # add __contains to the end there isn't already a filter suffix
             # __contains allows matching an object or array without the array orders having to match
-            lambda dct: R.map_keys(
-                lambda key, value: R.unless(
-                    lambda d: isinstance(d['value'], (dict, list)) and not _key_matches_filter_field(d['key'])
-                )(dict(key=key, value=value)),
+            lambda dct: R.map_keys_with_obj(
+                lambda key, value: R.when(
+                    lambda key: isinstance(value, (dict, list)) and not _key_matches_filter_field(key),
+                    lambda key: R.join('__', [key, 'contains'])
+                )(key),
                 dct
             ),
             lambda dct: flatten_dct_until(

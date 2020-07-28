@@ -4,7 +4,7 @@ from rescape_python_helpers.functional.ramda import pick_deep
 
 from rescape_graphene import process_filter_kwargs
 from rescape_graphene.django_helpers.versioning import get_versioner
-
+import re
 
 def quiz_model_query(client, model_query_function, result_name, variables):
     """
@@ -135,8 +135,9 @@ def quiz_model_mutation_create(client, graphql_update_or_create_function, result
     :param graphql_update_or_create_function: The update or create mutation function for the model. Expects client and input values
     :param result_path: The path to the result of the create in the data object (e.g. createRegion.region)
     :param values: The input values to use for the create
-    :param second_create_results: Tests a second create if specified. Use to make sure that create with the same values
+    :param second_create_results: Object, tests a second create if specified. Use to make sure that create with the same values
     creates a new instance or updates, depending on what you expect it to do.
+    The values of this should be regexes that match the created instance
     :param second_create_does_update: Default False. If True expects a second create with the same value to update rather than create a new instance
     :return: Tuple with two return values. The second is null if second_create_results is False
     """
@@ -160,7 +161,8 @@ def quiz_model_mutation_create(client, graphql_update_or_create_function, result
             assert created['id'] == created_too['id']
         if not second_create_does_update:
             assert created['id'] != created_too['id']
-        assert second_create_results == pick_deep(second_create_results, created_too)
+        for path, value in R.flatten_dct(second_create_results, '.').items():
+            assert re.match(value, R.item_str_path_or(None, path, created_too))
     else:
         new_result = None
 
