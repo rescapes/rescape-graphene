@@ -25,7 +25,7 @@ def get_versioner(single_object_qs, versions_type, **kwargs):
     versions = Version.objects.get_for_object(instance)
 
     return versions_type(
-        objects=list(versions), #R.map(lambda version: version._object_version.object, list(versions)),
+        objects=list(versions),  # R.map(lambda version: version._object_version.object, list(versions)),
         **kwargs
     )
 
@@ -126,3 +126,26 @@ def create_version_container_type(model_object_type, model_object_type_fields):
         )
     ))
     return dict(type=versions_type_model, fields=versions_fields)
+
+
+def resolve_version_instance(model_versioned_type, resolver, **kwargs):
+    """
+        Queries for the version instance by for the given model type using the given resolver
+        The kwargs must contain objects: [{id: the id}]
+    :param model_versioned_type: Graphene model class created by create_version_container_type
+    :param resolver: Resolver for the model
+    :param kwargs: Must contain objects: [{id: the id}] to resolve the versions of the instance given by id
+    :return:
+    """
+    # We technically receive an array but never accept more than the first item
+    obj = R.item_str_path_or(None, 'objects.0', kwargs)
+    if not R.item_str_path_or(None, 'instance.id', obj):
+        raise Exception(
+            f"id required in kwargs.objects.instance for revisions query, but got: {kwargs}")
+
+    # Create the filter that only returns 1 location
+    objs = resolver('filter', **R.prop_or({}, 'instance', obj)).order_by('id')
+    return get_versioner(
+        objs,
+        model_versioned_type,
+    )
