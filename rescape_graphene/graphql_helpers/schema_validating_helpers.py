@@ -46,7 +46,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
         variables=dict(
             page=1,
             page_size=1,
-            objects=props
+            objects=R.to_array_if_not(props)
         )
     )
     # Check against errors
@@ -81,7 +81,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
         variables=dict(
             page=page_count_expected,
             page_size=page_info['pageSize'],
-            objects=props
+            objects=R.to_array_if_not(props)
         )
     )
     # Make sure the new_result matches one of the remaining ids
@@ -115,9 +115,9 @@ def quiz_model_versioned_query(client, model_class, model_query, result_name, ve
     result = model_query(
         client,
         variables=dict(
-            objects=dict(
+            objects=R.to_array_if_not(dict(
                 instance=props
-            )
+            ))
         )
     )
     # Check against errors

@@ -1,4 +1,5 @@
 import ast
+from safedelete.models import SafeDeleteModel
 from collections import namedtuple
 
 from more_itertools import first
@@ -105,13 +106,22 @@ def model_resolver_for_dict_field(model_class):
             return None
 
         # Now filter based on any query arguments beyond id. If it doesn't match we also return None
-        return first(model_class.objects.filter(
+        found =  first(model_class.objects.filter(
             **dict(
                 # These are Q expressions
                 *flatten_query_kwargs(model_class, kwargs),
                 id=id
             )
         ), None)
+        # If we didn't find the instances search for delete instances if safedelete is implemented
+        return found or (issubclass(model_class, SafeDeleteModel) and first(model_class.objects.all(force_visibility=True).filter(
+            **dict(
+                # These are Q expressions
+                *flatten_query_kwargs(model_class, kwargs),
+                id=id
+            )
+        )))
+
 
     return _model_resolver_for_dict_field
 
