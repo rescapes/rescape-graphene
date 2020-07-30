@@ -2,7 +2,7 @@ import graphene
 from graphene_django import DjangoObjectType
 from graphene import DateTime, Int
 
-from rescape_graphene import DENY
+from rescape_graphene.graphql_helpers.schema_helpers import DENY
 
 
 class DjangoObjectTypeRevisionedMixin(object):

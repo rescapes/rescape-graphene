@@ -9,9 +9,9 @@ from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature
 from reversion.models import Version
 from snapshottest import TestCase
 
-from rescape_graphene import client_for_testing
 from rescape_graphene.graphql_helpers.schema_validating_helpers import quiz_model_query, quiz_model_mutation_create, \
     quiz_model_mutation_update
+from rescape_graphene.testcases import client_for_testing
 from .foo_schema import graphql_query_foos, graphql_update_or_create_foo
 from .models import Foo, Bar
 from .sample_schema import create_default_schema

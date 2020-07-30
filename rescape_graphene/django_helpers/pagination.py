@@ -2,7 +2,7 @@ from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from rescape_python_helpers import ramda as R
 from graphene import Int, Boolean, ObjectType, List
 
-from rescape_graphene import DENY
+from rescape_graphene.graphql_helpers.schema_helpers import DENY
 
 
 def get_paginator(qs, page_size, page, paginated_type, **kwargs):

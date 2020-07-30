@@ -2,9 +2,10 @@ from inflection import underscore
 from rescape_python_helpers import ramda as R
 from rescape_python_helpers.functional.ramda import pick_deep
 
-from rescape_graphene import process_filter_kwargs
-from rescape_graphene.django_helpers.versioning import get_versioner
 import re
+
+from rescape_graphene.graphql_helpers.schema_helpers import process_filter_kwargs
+
 
 def quiz_model_query(client, model_query_function, result_name, variables):
     """
@@ -126,6 +127,7 @@ def quiz_model_versioned_query(client, model_class, model_query, result_name, ve
         R.length,
         R.item_str_path_or([], f'data.{result_name}.objects')
     )(result) == version_count_expected
+
 
 def quiz_model_mutation_create(client, graphql_update_or_create_function, result_path, values,
                                second_create_results=None, second_create_does_update=False):

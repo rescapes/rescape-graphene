@@ -6,7 +6,8 @@ from graphene_django import DjangoObjectType
 from rescape_python_helpers import ramda as R
 from reversion.models import Version, Revision
 
-from rescape_graphene import DENY, merge_with_django_properties, UserType, user_fields
+from rescape_graphene.graphql_helpers.schema_helpers import DENY, merge_with_django_properties
+from rescape_graphene.schema_models.user_schema import UserType, user_fields
 
 
 def get_versioner(single_object_qs, versions_type, **kwargs):
