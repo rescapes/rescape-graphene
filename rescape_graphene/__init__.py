@@ -82,11 +82,6 @@ from .graphql_helpers.views import (
     SafeGraphQLView
 )
 
-from .schema import (
-    Query,
-    Mutation
-)
-
 from .testcases import (
     client_for_testing
 )

@@ -231,7 +231,7 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 GRAPHENE = {
-    'SCHEMA': 'sample_webapp.sample_schema.schema',
+    'SCHEMA': 'sample_webapp.sample_schema_creator.schema',
     'MIDDLEWARE': [
         'graphql_jwt.middleware.JSONWebTokenMiddleware'
     ]

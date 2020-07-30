@@ -1,6 +1,8 @@
+import graphene
 from django.contrib.auth import get_user_model
-from graphene import ObjectType, Float, InputObjectType, Field, Mutation
+from graphene import ObjectType, Float, InputObjectType, Field, Mutation, List
 from graphene_django import DjangoObjectType
+from graphql_jwt.decorators import login_required
 from rescape_python_helpers import ramda as R
 from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature_collection
 
@@ -10,11 +12,37 @@ from rescape_graphene.graphql_helpers.json_field_helpers import model_resolver_f
 from rescape_graphene.graphql_helpers.schema_helpers import REQUIRE, \
     merge_with_django_properties, guess_update_or_create, \
     CREATE, UPDATE, input_type_parameters_for_update_or_create, graphql_update_or_create, graphql_query, \
-    input_type_fields, DENY, IGNORE, top_level_allowed_filter_arguments, allowed_filter_arguments
+    input_type_fields, DENY, IGNORE, top_level_allowed_filter_arguments, allowed_filter_arguments, \
+    update_or_create_with_revision, process_filter_kwargs, process_filter_kwargs_with_to_manys, query_sequentially
 from rescape_graphene.schema_models.geojson.types.feature_collection import FeatureCollectionDataType, \
     feature_collection_data_type_fields
 from rescape_graphene.schema_models.user_schema import UserType, user_fields
-from sample_webapp.models import Foo
+from sample_webapp.models import Foo, Bar
+
+
+class BarType(DjangoObjectType):
+    """
+        This is the Graphene Type for Bar.
+    """
+    id = graphene.Int(source='pk')
+
+    class Meta:
+        model = Bar
+
+
+bar_fields = merge_with_django_properties(BarType, dict(
+    id=dict(create=DENY, update=REQUIRE),
+    key=dict(create=REQUIRE, unique_with=increment_prop_until_unique(Bar, None, 'key', {})),
+))
+
+bar_mutation_config = dict(
+    class_name='Bar',
+    crud={
+        CREATE: 'createBar',
+        UPDATE: 'updateBar'
+    },
+    resolve=guess_update_or_create
+)
 
 foo_data_fields = dict(
     example=dict(type=Float),
@@ -45,6 +73,7 @@ class FooType(DjangoObjectType):
     """
         This is the Graphene Type for Foo.
     """
+    id = graphene.Int(source='pk')
 
     class Meta:
         model = Foo
@@ -66,14 +95,16 @@ FooType._meta.fields['geo_collection'] = Field(
     resolver=resolver_for_feature_collection
 )
 
-
-def feature_fields_in_graphql_geojson_format(args):
-    pass
-
-
 foo_fields = merge_with_django_properties(FooType, dict(
+    id=dict(create=DENY, update=REQUIRE),
     key=dict(create=REQUIRE, unique_with=increment_prop_until_unique(Foo, None, 'key', {})),
     name=dict(create=REQUIRE),
+    bars=dict(
+        type=BarType,
+        graphene_type=BarType,
+        fields=bar_fields,
+        type_modifier=lambda *type_and_args: List(*type_and_args)
+    ),
     created_at=dict(),
     updated_at=dict(),
     # This refers to the FooDataType, which is a representation of all the json fields of Foo.data
@@ -96,6 +127,19 @@ foo_fields = merge_with_django_properties(FooType, dict(
         fields=feature_collection_data_type_fields,
     )
 ))
+
+class FooQuery(ObjectType):
+    id = graphene.Int(source='pk')
+
+    foos = graphene.List(
+        FooType,
+        **top_level_allowed_filter_arguments(foo_fields, FooType)
+    )
+
+    @login_required
+    def resolve_foos(self, info, **kwargs):
+        q_expressions_sets = process_filter_kwargs_with_to_manys(Foo, kwargs)
+        return query_sequentially(Foo.objects, 'filter', q_expressions_sets)
 
 foo_mutation_config = dict(
     class_name='Foo',
@@ -125,7 +169,7 @@ class UpsertFoo(Mutation):
             )
         )
         update_or_create_values = input_type_parameters_for_update_or_create(foo_fields, modified_foo_data)
-        foo, created = Foo.objects.update_or_create(**update_or_create_values)
+        foo, created = update_or_create_with_revision(Foo, update_or_create_values)
         return UpsertFoo(foo=foo)
 
 
@@ -149,5 +193,13 @@ class UpdateFoo(UpsertFoo):
                         input_type_fields(foo_fields, UPDATE, FooType))(required=True)
 
 
+graphql_update_or_create_bar = graphql_update_or_create(bar_mutation_config, bar_fields)
+graphql_query_bars = graphql_query(BarType, bar_fields, 'bars')
+
 graphql_update_or_create_foo = graphql_update_or_create(foo_mutation_config, foo_fields)
 graphql_query_foos = graphql_query(FooType, foo_fields, 'foos')
+
+class FooMutation(graphene.ObjectType):
+    create_foo = CreateFoo.Field()
+    update_foo = UpdateFoo.Field()
+

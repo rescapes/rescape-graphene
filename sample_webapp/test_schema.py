@@ -179,8 +179,7 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
         # Here is our create
         create_result = graphql_update_or_create_user(self.client, values)
 
-        # Unfortunately Graphene returns the ID as a string, even when its an int
-        id = int(R.prop('id', R.item_path(['data', 'createUser', 'user'], create_result)))
+        id = R.prop('id', R.item_path(['data', 'createUser', 'user'], create_result))
 
         # Here is our update
         result = graphql_update_or_create_user(
@@ -189,13 +188,3 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
         )
         assert not R.prop('errors', result), R.dump_json(R.prop('errors', result))
         self.assertMatchSnapshot(R.omit_deep(omit_props, R.item_path(['data', 'updateUser', 'user'], result)))
-
-    # def test_delete(self):
-    #     self.assertMatchSnapshot(self.client.execute('''{
-    #         users {
-    #             username,
-    #             first_name,
-    #             last_name,
-    #             password
-    #         }
-    #     }'''))

@@ -2,9 +2,9 @@ from django.contrib.auth.hashers import make_password
 
 from rescape_graphene.schema_models.user_schema import UserType, user_fields
 
-from sample_webapp.sample_schema import FooType
+from sample_webapp.sample_schema import FooType, create_default_schema
 
-from sample_webapp.sample_schema import schema, foo_fields
+from sample_webapp.sample_schema import foo_fields
 from rescape_graphene.graphql_helpers.schema_helpers import allowed_read_fields, input_type_fields, CREATE, UPDATE, \
     input_type_parameters_for_update_or_create, allowed_filter_arguments
 from snapshottest import TestCase
@@ -12,6 +12,7 @@ from rescape_python_helpers import ramda as R
 
 from rescape_graphene.testcases import client_for_testing
 
+schema = create_default_schema()
 
 class SchemaHelpersTypeCase(TestCase):
     client = None
@@ -49,6 +50,7 @@ class SchemaHelpersTypeCase(TestCase):
                       user=dict(id=5),
                       data =dict(example=2.2))
         self.assertMatchSnapshot(R.omit(['password'], input_type_parameters_for_update_or_create(foo_fields, foo_values)))
+
 
     # def test_delete(self):
     #    self.assertMatchSnapshot(delete_fields(user_fields))

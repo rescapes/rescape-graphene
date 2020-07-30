@@ -138,7 +138,7 @@ def resolve_version_instance(model_versioned_type, resolver, **kwargs):
     :return:
     """
     # We technically receive an array but never accept more than the first item
-    obj = R.item_str_path_or(None, 'objects.0', kwargs)
+    obj = R.head(R.prop('objects', kwargs))
     if not R.item_str_path_or(None, 'instance.id', obj):
         raise Exception(
             f"id required in kwargs.objects.instance for revisions query, but got: {kwargs}")

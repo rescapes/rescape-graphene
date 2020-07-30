@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.gis.db import models
 from django.contrib.gis.db.models import GeometryCollectionField, Model
 from django.contrib.postgres.fields import JSONField
-from django.db.models import CharField, DateTimeField, ForeignKey
+from django.db.models import CharField, DateTimeField, ForeignKey, ManyToManyField
 
 import reversion
 from django.contrib.auth.models import User, Group
@@ -11,7 +11,11 @@ from django.contrib.auth.models import User, Group
 reversion.register(User)
 reversion.register(Group)
 
+@reversion.register()
+class Bar(Model):
+    key = CharField(max_length=20, unique=True, null=False)
 
+@reversion.register()
 class Foo(Model):
     """
         Models a sample model with a json field and user foreign key
@@ -27,6 +31,7 @@ class Foo(Model):
 
     # Example of a foreign key
     user = ForeignKey(get_user_model(), on_delete=models.DO_NOTHING)
+    bars = ManyToManyField(Bar)
     # Example of geojson container
     geo_collection = GeometryCollectionField(null=False)
     # This stores the full geojson, whereas geo_collection only stores geometry for PostGIS operations

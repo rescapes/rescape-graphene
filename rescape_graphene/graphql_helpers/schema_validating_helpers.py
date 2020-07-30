@@ -196,7 +196,7 @@ def quiz_model_mutation_update(client, graphql_update_or_create_function, create
         client,
         R.merge_all([
             dict(
-                id=int(created['id'])
+                id=created['id']
             ),
             dict(
                 key=created['key']

@@ -1140,3 +1140,87 @@ def deep_merge_existing_json(django_model, json_prop, data):
         )
     # Otherwise just return the new value if any
     return R.prop_or(None, json_prop, data)
+
+
+def invert_q_expressions_sets(q_expressions):
+    """
+        Index q_expressions by their key (children[0][0]) into sets, then
+        inverts the matrix of q_expressions into 1 or 2 sets. The first set is most and the 2nd set
+        ist the second many-to-many expression many_to_many_intersection_streets_to_and_statement
+        that must be run as a second filter
+    :param q_expressions: list q_expressions. Only supports simple Q expressions with one clause
+    :return: 1 or 2 sets of q_expressions that can be used by sequential filters
+    """
+
+    return R.compose(
+        # Sort by set index and return the values
+        lambda index_dicts: R.map(
+            lambda key: R.compose(
+                lambda values: R.map(R.prop('q_expression'), values),
+                lambda key: R.prop(key, index_dicts)
+            )(key),
+            sorted(R.keys(index_dicts))
+        ),
+        # Group by index within each set. Most will be 0. Only then second many-to-many can be 1
+        lambda dcts: R.index_by(R.prop('index'), dcts),
+        lambda q_expression_sets: R.chain(
+            lambda q_expression_set: R.map(
+                lambda i_q_expression: dict(index=i_q_expression[0], q_expression=i_q_expression[1]),
+                enumerate(q_expression_set)
+            ),
+            q_expression_sets
+        ),
+        # One special case we need to handle multiple 'intersections_data_streets'
+        # We need to sequentially filter
+        # We do this by grouping them together into an array here, then we invert the 2D array
+        lambda q_expressions: R.values(
+            R.index_by(lambda q_expression: q_expression.children[0][0], q_expressions)
+        )
+    )(q_expressions)
+
+
+def process_filter_kwargs_with_to_manys(model, kwargs):
+    """
+        Calls process_filter_kwargs and then invert_q_expressions_sets so that
+        the filtering can correctly handle to-many relations. This works
+        by grouping the same keys together so that a search for two values of a to-many
+        property must both be present (most often one is present in each of two to-mnay instances)
+    :param model: The django model
+    :param kwargs: The kwargs to filter by
+    :return: Sets of q_expressions that are run sequentially
+    """
+    return R.compose(
+        lambda q_expressions: invert_q_expressions_sets(q_expressions),
+        lambda kwargs: process_filter_kwargs(model, kwargs)
+    )(kwargs)
+
+
+def query_sequentially(manager, manager_method, q_expressions_sets):
+    """
+        Sequentially queries the q_expression_sets formed by  process_filter_kwargs_with_to_manys/invert_q_expressions_sets
+        Sequentially querying allows toMany values to be sought when multiple matching toMany instances are sought
+    :param manager: The django model manager
+    :param manager_method: The django model manager method. Normally 'filter', but could be 'count' or 'get'
+    For sequential queries only the last query can be anything other than filter
+    :param q_expressions_sets: List of lists of q expressions, where common query paths are separated into
+    different sets so they can be run sequentially (see invert_q_expressions_sets)
+    :return: The query response
+    """
+
+    if not R.length(q_expressions_sets):
+        return getattr(manager, manager_method)()
+
+    def _reduce(last, mgr_or_queryset, q_expressions_set):
+        # We need distinct because the intersections__data__streets can generate duplicates of the same location
+        return getattr(mgr_or_queryset, manager_method if last else 'filter')(*q_expressions_set).distinct()
+
+    last = R.last(q_expressions_sets)
+    return R.reduce(
+        lambda manager_or_query, q_expressions: _reduce(
+            R.equals(q_expressions, last),
+            manager_or_query,
+            q_expressions
+        ),
+        manager,
+        q_expressions_sets
+    )
