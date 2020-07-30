@@ -89,7 +89,6 @@ from .schema import (
 )
 
 __all__ = [
-    'functional.ramda',
     'graphql_helpers.schema_helpers',
     'graphql_helpers.user_schema',
     'graphql_helpers.json_field_helpers',
@@ -101,5 +100,4 @@ __all__ = [
     'schama_models.group_schema'
     'schama_models.geojson'
     'schema.schema'
-    'client_for_testing'
 ]
