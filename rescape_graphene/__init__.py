@@ -82,6 +82,12 @@ from .testcases import (
     client_for_testing
 )
 
+from .schema import (
+    create_query_mutation_schema,
+    create_schema,
+    create_query_and_mutation_classes
+)
+
 __all__ = [
     'functional.ramda',
     'graphql_helpers.schema_helpers',
