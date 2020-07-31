@@ -551,25 +551,6 @@ def allowed_filter_arguments(fields_dict, graphene_type):
     )(call_if_lambda(fields_dict))
 
 
-def process_filter_kwargs(model, kwargs):
-    """
-        Converts filter names for resolvers. They come in with an _ but need __ to match django's query language
-    :param model: The django model--used to flatten the objects properly
-    :param kwargs:
-    :return: list of Q expressions representing each kwarg
-    """
-    return R.compose(
-        lambda kwrgs: flatten_query_kwargs(model, kwrgs),
-
-        # Convert filters from _ to __
-        R.map_keys_deep(
-            lambda k, v: k.replace('_', '__')
-            if R.any_satisfy(lambda string: '_%s' % string in str(k), R.keys(FILTER_FIELDS))
-            else k
-        )
-    )(kwargs)
-
-
 def guess_update_or_create(fields_dict):
     """
     Determines if the query is intended to be a create or update
@@ -1179,19 +1160,39 @@ def invert_q_expressions_sets(q_expressions):
     )(q_expressions)
 
 
-def process_filter_kwargs_with_to_manys(model, kwargs):
+def process_filter_kwargs(model, **kwargs):
+    """
+        Converts filter names for resolvers. They come in with an _ but need __ to match django's query language
+    :param model: The django model--used to flatten the objects properly
+    :param kwargs:
+    :return: list of Q expressions representing each kwarg
+    """
+    return R.compose(
+        lambda kwrgs: flatten_query_kwargs(model, kwrgs),
+
+        # Convert filters from _ to __
+        R.map_keys_deep(
+            lambda k, v: k.replace('_', '__')
+            if R.any_satisfy(lambda string: '_%s' % string in str(k), R.keys(FILTER_FIELDS))
+            else k
+        )
+    )(kwargs)
+
+
+def process_filter_kwargs_with_to_manys(model, process_filter_kwargs=process_filter_kwargs, **kwargs):
     """
         Calls process_filter_kwargs and then invert_q_expressions_sets so that
         the filtering can correctly handle to-many relations. This works
         by grouping the same keys together so that a search for two values of a to-many
         property must both be present (most often one is present in each of two to-mnay instances)
     :param model: The django model
+    :param process_filter_kwargs Defaults to process_filter_kwargs, can be overridden for special cases
     :param kwargs: The kwargs to filter by
     :return: Sets of q_expressions that are run sequentially
     """
     return R.compose(
         lambda q_expressions: invert_q_expressions_sets(q_expressions),
-        lambda kwargs: process_filter_kwargs(model, kwargs)
+        lambda kwargs: process_filter_kwargs(model, **kwargs)
     )(kwargs)
 
 

@@ -138,7 +138,7 @@ class FooQuery(ObjectType):
 
     @login_required
     def resolve_foos(self, info, **kwargs):
-        q_expressions_sets = process_filter_kwargs_with_to_manys(Foo, kwargs)
+        q_expressions_sets = process_filter_kwargs_with_to_manys(Foo, **kwargs)
         return query_sequentially(Foo.objects, 'filter', q_expressions_sets)
 
 foo_mutation_config = dict(

@@ -48,7 +48,7 @@ class RescapeGrapheneQuery(ObjectType):
 
     @staff_member_required
     def resolve_users(self, info, **kwargs):
-        q_expressions = process_filter_kwargs(get_user_model(), kwargs)
+        q_expressions = process_filter_kwargs(get_user_model(), **kwargs)
         return get_user_model().objects.filter(*q_expressions)
 
     @login_required

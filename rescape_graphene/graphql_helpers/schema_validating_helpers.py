@@ -64,7 +64,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
             R.map(
                 R.prop('id'),
                 model_class.objects.filter(
-                    *process_filter_kwargs(model_class, R.map_keys(underscore, props))
+                    *process_filter_kwargs(model_class, **R.map_keys(underscore, props))
                 )
             )
         ) -
