@@ -8,8 +8,10 @@ import reversion
 from django.contrib.auth.models import User, Group
 
 # Register Revisions for User and Group
-reversion.register(User)
-reversion.register(Group)
+if not reversion.is_registered(User):
+    reversion.register(User)
+if not reversion.is_registered(Group):
+    reversion.register(Group)
 
 @reversion.register()
 class Bar(Model):

@@ -1036,7 +1036,7 @@ def merge_data_fields_on_update(data_fields, existing_instance, data):
         R.omit(data_fields, data),
         # with a deep merge of the new data's data fields and the existing instance's data fields
         R.merge_deep(
-            R.pick(data_fields, existing_instance.__dict__),
+            R.pick(R.concat(['id'], data_fields), existing_instance.__dict__),
             # Strip out the Graphene objects so we can merge correctly
             R.compose(R.map_with_obj(lambda k, v: to_dict_deep(v)), R.pick(data_fields))(data),
             Merger([

@@ -13,7 +13,8 @@ def default_strategy(matches, prop_value, i):
 def increment_prop_until_unique(django_class, strategy, prop, additional_filter_props, django_instance_data):
     """
         Increments the given prop of the given django as given by data['prop'] until it matches nothing in
-        the database
+        the database. Note that this includes checks against soft deleted instances where the deleted prop is non-null
+        (assumes the use of SafeDeleteModel on the model class)
     :param django_class: Django class to query
     :param prop: The prop to ensure uniqueness
     :param additional_filter_props: Other props, such as user id, to filter by. This allows incrementing a name
@@ -31,7 +32,8 @@ def increment_prop_until_unique(django_class, strategy, prop, additional_filter_
     pk = R.prop_or(None, 'id', django_instance_data)
 
     strategy = strategy or default_strategy
-    matching_values = django_class.objects.filter(
+    # Include deleted objects here. It's up to additional_filter_props to deal with the deleted=date|None property
+    matching_values = django_class.all_objects.filter(
         # Ignore value matching the pk if this is an update operation.
         # In other words we can update the key to what it already is, aka do nothing
         *R.compact([
