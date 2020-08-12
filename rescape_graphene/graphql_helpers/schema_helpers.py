@@ -7,7 +7,7 @@ from decimal import Decimal
 import graphene
 import reversion
 from deepmerge import Merger
-from django.contrib.gis.db.models import GeometryField, OneToOneField, ManyToManyField, ForeignKey, \
+from django.contrib.gis.db.models import OneToOneField, ManyToManyField, ForeignKey, \
     GeometryCollectionField
 from django.db.models import JSONField, AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
@@ -18,7 +18,7 @@ from graphql.language import ast
 from graphql.language.printer import print_ast
 from inflection import camelize
 from rescape_python_helpers import ramda as R, memoize
-from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct, to_pairs, flatten_dct_until, \
+from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct_until, \
     to_array_if_not
 
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda
@@ -932,6 +932,31 @@ def _key_matches_filter_field(key):
     return R.has(last_key, FILTER_FIELDS)
 
 
+def _related_model_expressions(related_model, value, key):
+    # Convert the values to array if not and chain to flatten
+    if R.equals('in', R.last(key.split('__'))):
+        # If we have an __in suffix we expect an array of related objects.
+        # We do OR queries for these and return a single Q expression related_model_key__in=sub query
+        qs = R.map(lambda obj: Q(**obj), value)
+        q_expression = related_model.objects.filter(R.reduce(
+            lambda q1, q2: q1 | q2,
+            R.head(qs),
+            R.tail(qs)
+        ))
+        return [Q(**{key:q_expression})]
+    else:
+        # Process each value to 1 or more result and chain to flatten
+        q_expressions = R.chain(
+            lambda v: process_query_value(related_model, v),
+            to_array_if_not(value)
+        )
+        # Map each to a Q expression to be ANDed
+        return R.map(
+            # TODO we assume simple Q expressions with ony one child at children[0]
+            lambda q_expression: Q(**{f'{key}__{q_expression.children[0][0]}': q_expression.children[0][1]}),
+            q_expressions
+        )
+
 def process_query_kwarg(model, key, value):
     """
         Process a query kwarg. The key is always a string and the value can be a scalar or a dict representing the
@@ -984,23 +1009,19 @@ def process_query_kwarg(model, key, value):
         if isinstance(model._meta._forward_fields_map[key], (ForeignKey, OneToOneField, ManyToManyField)):
             # Recurse on these, so foo: {bar: 1, car: 2} resolves to [['foo__bar' 1], ['foo__car', 2]]
             related_model = model._meta._forward_fields_map[key].related_model
-            # Convert the values to array if not and chain to flatten
-            q_expressions = R.chain(
-                lambda v: process_query_value(related_model, v),
-                to_array_if_not(value)
-            )
-            return R.map(
-                # TODO we assume simple Q expressions with ony one child at children[0]
-                lambda q_expression: Q(**{f'{key}__{q_expression.children[0][0]}': q_expression.children[0][1]}),
-                q_expressions
-            )
+            return _related_model_expressions(related_model, value, key)
         elif isinstance(model._meta._forward_fields_map[key], (ManyToManyField)):
             raise NotImplementedError(f'Unrecognized field type for {model._meta._forward_fields_map[key]}')
     elif R.contains(R.head(key.split('__')), R.map(R.prop('name'), model._meta.related_objects)):
-        # Reverse Many-to-Many relationships, the only thing I know how to support at this point is
-        # __in=[ids], although it might be possible to support other filters
-        # If ids aren't in the value list objects, this will fail
-        return [Q(**{key: R.map(R.prop('id'), value)})]
+        # Recurse on these, so foo: {bar: {id: 1}, car: {id: 2}} resolves to [['foo__bar__id' 1], ['foo__car__id', 2]]
+        many_to_many_rel = R.find(
+            lambda obj: R.compose(
+                R.equals(R.head(key.split('__'))),
+                R.prop('name')
+            )(obj),
+            model._meta.related_objects)
+        related_model = many_to_many_rel.related_model
+        return _related_model_expressions(related_model, value, key)
 
     return [Q(**{key: value})]
 
