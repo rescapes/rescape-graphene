@@ -33,7 +33,8 @@ def increment_prop_until_unique(django_class, strategy, prop, additional_filter_
 
     strategy = strategy or default_strategy
     # Include deleted objects here. It's up to additional_filter_props to deal with the deleted=date|None property
-    matching_values = django_class.all_objects.filter(
+    all_objects = django_class.all_objects if R.has('all_objects', django_class) else django_class.objects
+    matching_values = all_objects.filter(
         # Ignore value matching the pk if this is an update operation.
         # In other words we can update the key to what it already is, aka do nothing
         *R.compact([

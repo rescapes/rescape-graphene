@@ -373,6 +373,7 @@ def parse_django_class(model, field_dict, parent_type_classes=[]):
     :param field_dict: The field_dict, which is only needed to supplies the fields to related fields. Related
     fields are made into InputType subclasses for mutations, so field_dict[field]['fields'] supplies the fields
     for the InputType. The fields are in the same format as field_dict
+    :param parent_type_classes Single class or array of parent classes of this graphene class
     :return:
     """
     # This mess just maps each attr to all "unique together" tuples it's in
@@ -393,7 +394,12 @@ def parse_django_class(model, field_dict, parent_type_classes=[]):
             # Key by file.name
             field.name,
             # Process each field
-            process_field(field_to_unique_field_groups, field, R.prop(field.name, field_dict), parent_type_classes)
+            process_field(
+                field_to_unique_field_groups,
+                field,
+                R.prop(field.name, field_dict),
+                R.to_array_if_not(parent_type_classes)
+            )
         ],
         # Only accept model fields that are defined in field_dict
         R.filter(

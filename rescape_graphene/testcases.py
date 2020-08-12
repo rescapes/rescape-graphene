@@ -1,11 +1,11 @@
 import traceback
+
 import six
 from django.contrib.auth.models import AnonymousUser
-from django.test import Client, RequestFactory, testcases
+from django.test import RequestFactory
 from graphene.test import Client as GrapheneTestClient
 from graphql import GraphQLError
 from graphql.error import format_error as format_graphql_error
-
 from rescape_python_helpers import ramda as R
 
 

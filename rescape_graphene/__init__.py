@@ -1,3 +1,6 @@
+import django
+django.setup()
+
 from .django_helpers.pagination import (
     get_paginator,
     create_paginated_type_mixin
@@ -49,11 +52,13 @@ from .graphql_helpers.schema_helpers import (
 from .graphql_helpers.views import (
     SafeGraphQLView
 )
+
 from .schema_models.geojson import (
     GrapheneFeatureCollection,
     FeatureCollectionDataType, FeatureDataType, FeatureGeometryDataType, feature_data_type_fields,
     feature_geometry_data_type_fields
 )
+
 from .schema_models.group_schema import (
     GroupType,
     UpsertGroup,

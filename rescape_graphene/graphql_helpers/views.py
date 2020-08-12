@@ -3,16 +3,14 @@ import logging
 import traceback
 
 from django.conf import settings
+from graphene_django.views import GraphQLView
 from graphql.error import GraphQLSyntaxError
-from graphql.error.located_error import GraphQLLocatedError
 from graphql.error import format_error as format_graphql_error
+from graphql.error.located_error import GraphQLLocatedError
+
 from .exceptions import ResponseError
 from .str_converters import to_kebab_case, dict_key_to_camel_case
-from django.http import HttpResponse
-from rest_framework import exceptions
-from rest_framework_jwt.authentication import JSONWebTokenAuthentication
-from graphene_django.views import GraphQLView
-import simplejson as json
+
 log = logging.getLogger('rescape_graphene')
 
 def encode_code(code):
@@ -70,6 +68,8 @@ class SafeGraphQLView(GraphQLView):
         result = super().execute_graphql_request(*args, **kwargs)
         if result.errors:
             for error in result.errors:
+                if error.source:
+                    log.error(error.source.body)
                 # NO way to get stack trace of the original error grrrr
                 log.exception(error)
         return result
