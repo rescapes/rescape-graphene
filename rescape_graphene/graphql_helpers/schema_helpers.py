@@ -815,24 +815,6 @@ def graphql_query(graphene_type, fields, query_name):
     return form_query
 
 
-def grapqhl_authorization_mutation(client, values):
-    """
-    Generates an authorization mutation
-    TODO this won't work unless we have a client with a request that can interact with JWT
-    :param client: Apollo client
-    :param values: username and password key values
-    :return:
-    """
-    mutation = print_ast(parse(
-        '''mutation
-        TokenAuth($username: String!, $password: String!) {
-            tokenAuth(username: $username, password: $password) {
-            token
-        }
-        }'''))
-    client.execute(mutation, variables=values)
-
-
 def capitalize_first_letter(str):
     """
     Capitalize the first letter since str.capitalize() lowercases everything first (yes Python sucks)

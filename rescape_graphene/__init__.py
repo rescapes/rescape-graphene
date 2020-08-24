@@ -79,9 +79,6 @@ from .schema_models.user_schema import (
     graphql_query_users,
     user_fields,
     user_mutation_config,
-    graphql_authenticate_user,
-    graphql_verify_user,
-    graphql_refresh_token
 )
 from .testcases import (
     client_for_testing
