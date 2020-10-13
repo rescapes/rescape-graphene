@@ -9,6 +9,7 @@ import reversion
 from deepmerge import Merger
 from django.contrib.gis.db.models import OneToOneField, ManyToManyField, ForeignKey, \
     GeometryCollectionField
+jsonfield.fields.JSONField
 from django.db.models import JSONField, AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
     BigIntegerField, NullBooleanField, Q

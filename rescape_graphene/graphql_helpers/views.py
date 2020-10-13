@@ -62,7 +62,7 @@ def format_located_error(error):
 
 
 class SafeGraphQLView(GraphQLView):
-    graphiql_template = "graphene_sub/graphiql.html"
+    graphiql_template = "graphene/graphiql.html"
 
     def execute_graphql_request(self, *args, **kwargs):
         result = super().execute_graphql_request(*args, **kwargs)
