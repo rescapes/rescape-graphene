@@ -135,8 +135,7 @@ def graphql_refresh_token(client, variables):
     :return:
     """
     return client.execute('''
-    mutation
-    RefreshToken($token: String!) {
+    mutation RefreshToken($token: String!) {
         refreshToken(token: $token) {
         token
     payload
