@@ -1,6 +1,7 @@
 import graphene
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import AnonymousUser
 from graphene import InputObjectType, ObjectType
 from graphene_django.types import DjangoObjectType
 from graphql_jwt.decorators import login_required, staff_member_required
@@ -68,7 +69,7 @@ class UserQuery(ObjectType):
         """
         context = info.context
         user = R.prop_or(None, 'user', context)
-        return user
+        return user if not isinstance(user, AnonymousUser) else None
 
 
 user_mutation_config = dict(
@@ -120,3 +121,4 @@ class UpdateUser(UpsertUser):
 
 graphql_update_or_create_user = graphql_update_or_create(user_mutation_config, user_fields)
 graphql_query_users = graphql_query(UserType, user_fields, 'users')
+graphql_query_current_user = graphql_query(UserType, user_fields, 'currentUser')
