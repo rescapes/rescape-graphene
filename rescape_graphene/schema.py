@@ -1,9 +1,8 @@
-import graphene
-import graphql_jwt
 from graphene import Schema
 from rescape_python_helpers import ramda as R
 
-from rescape_graphene.schema_models.user_schema import CreateUser, UpdateUser, UserQuery
+from rescape_graphene.schema_models.token_schema import RescapeTokenMutation, RescapeTokenQuery
+from rescape_graphene.schema_models.user_schema import UserQuery, UserMutation
 
 
 def create_query_mutation_schema(class_config):
@@ -29,18 +28,6 @@ def create_query_mutation_schema(class_config):
 def create_schema(class_config):
     return R.prop('schema', create_query_mutation_schema(class_config))
 
-class RescapeGrapheneMutation(graphene.ObjectType):
-    create_user = CreateUser.Field()
-    update_user = UpdateUser.Field()
-    token_auth = graphql_jwt.ObtainJSONWebToken.Field()
-    verify_token = graphql_jwt.Verify.Field()
-    refresh_token = graphql_jwt.Refresh.Field()
-    delete_token_cookie = graphql_jwt.DeleteJSONWebTokenCookie.Field()
-    # Long running refresh tokens
-    delete_refresh_token_cookie = graphql_jwt.DeleteRefreshTokenCookie.Field()
-
-
-
 def create_query_and_mutation_classes(query_and_mutation_class_lookups):
     """
         Creates a Query class and Mutation classs from defaults or allows overrides of any of these schemas
@@ -55,6 +42,7 @@ def create_query_and_mutation_classes(query_and_mutation_class_lookups):
 
     class Query(
         UserQuery,
+        RescapeTokenQuery,
         *R.map_with_obj_to_values(
             lambda k, v: R.prop('query', v), query_and_mutation_class_lookups
         )
@@ -62,7 +50,8 @@ def create_query_and_mutation_classes(query_and_mutation_class_lookups):
         pass
 
     class Mutation(
-        RescapeGrapheneMutation,
+        UserMutation,
+        RescapeTokenMutation,
         *R.map_with_obj_to_values(
             lambda k, v: R.prop('mutation', v), query_and_mutation_class_lookups
         )

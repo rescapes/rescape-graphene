@@ -36,7 +36,6 @@ user_fields = merge_with_django_properties(UserType, dict(
     **reversion_types
 ))
 
-
 class UserQuery(ObjectType):
     current_user = graphene.Field(
         UserType,
@@ -117,6 +116,11 @@ class UpdateUser(UpsertUser):
     class Arguments:
         user_data = type('UpdateUserInputType', (InputObjectType,), input_type_fields(user_fields, UPDATE, UserType))(
             required=True)
+
+
+class UserMutation(ObjectType):
+    create_user = CreateUser.Field()
+    update_user = UpdateUser.Field()
 
 
 graphql_update_or_create_user = graphql_update_or_create(user_mutation_config, user_fields)

@@ -10,6 +10,8 @@ from snapshottest import TestCase
 from rescape_graphene.testcases import client_for_testing
 from sample_webapp.test_schema_helpers import assert_no_errors, schema
 from . import user_schema
+from .token_graphql import graphql_token_auth_mutation, graphql_verify_token_mutation, graphql_refresh_token_mutation, \
+    graphql_delete_token_cookie_mutation, graphql_delete_refresh_token_cookie_mutation
 from .user_schema import graphql_update_or_create_user
 from ..graphql_helpers.schema_validating_helpers import quiz_model_query
 
@@ -39,19 +41,19 @@ class UserTypeCase(TestCase):
 
     def test_authenticate(self):
         values = dict(username=self.user.username, password='roar')
-        result = graphql_authenticate_user(self.client, values)
+        result = graphql_token_auth_mutation(self.client, values)
         assert_no_errors(result)
         auth_token = R.item_str_path('data.tokenAuth.token', result)
         assert auth_token
-        verify_result = graphql_verify_user(self.client, dict(token=auth_token))
+        verify_result = graphql_verify_token_mutation(self.client, dict(token=auth_token))
         assert_no_errors(verify_result)
-        refresh_result = graphql_refresh_token(self.client, dict(token=auth_token))
+        refresh_result = graphql_refresh_token_mutation(self.client, dict(token=auth_token))
         assert_no_errors(refresh_result)
-        delete_token_cookie_result = graphql_delete_token_cookie(self.client, {})
+        delete_token_cookie_result = graphql_delete_token_cookie_mutation(self.client, {})
         assert_no_errors(delete_token_cookie_result)
-        delete_token_cookie_result = graphql_delete_token_cookie(self.client, {})
+        delete_token_cookie_result = graphql_delete_token_cookie_mutation(self.client, {})
         assert_no_errors(delete_token_cookie_result)
-        delete_refresh_token_cookie_result = graphql_delete_refresh_token_cookie
+        delete_refresh_token_cookie_result = graphql_delete_refresh_token_cookie_mutation(self.client, {})
         assert_no_errors(delete_refresh_token_cookie_result)
 
     def test_query(self):
@@ -107,77 +109,3 @@ class UserTypeCase(TestCase):
         ))
         assert len(versions) == 2
 
-
-    # The following are just for testing. There is not backing class for authentication
-    # so we just for mutations manually
-
-def graphql_authenticate_user(client, variables):
-    """
-        Executes an authentication with a username and password as variables
-    :param client:
-    :param variables:
-    :return:
-    """
-    return client.execute('''
-mutation TokenAuth($username: String!, $password: String!) {
-  tokenAuth(username: $username, password: $password) {
-    token
-  }
-}''', variables=variables)
-
-def graphql_verify_user(client, variables):
-    """
-        Verifies an authentication with token
-    :param client:
-    :param variables: contains a token key that is the token to update
-    :return:
-    """
-    return client.execute('''
-    mutation VerifyToken($token: String!) {
-  verifyToken(token: $token) {
-    payload
-  }
-}''', variables=variables)
-
-def graphql_refresh_token(client, variables):
-    """
-        Refreshes an auth token
-    :param client:
-    :param variables: contains a token key that is the token to update
-    :return:
-    """
-    return client.execute('''
-    mutation RefreshToken($token: String!) {
-        refreshToken(token: $token) {
-        token
-    payload
-    }
-}''', variables=variables)
-
-def graphql_delete_token_cookie(client, variables):
-    """
-        Deletes the user's cooke
-    :param client:
-    :param variables: contains a token key that is the token to update
-    :return:
-    """
-    return client.execute('''
-    mutation DeleteTokenCookie {
-        deleteTokenCookie {
-            deleted
-        }
-    }''', variables=variables)
-
-def graphql_delete_refresh_token_cookie(client, variables):
-    """
-        Deletes the user's cooke
-    :param client:
-    :param variables: contains a token key that is the token to update
-    :return:
-    """
-    return client.execute('''
-    mutation DeleteRefreshTokenCookie {
-        deleteRefreshTokenCookie {
-            deleted
-        }
-    }''', variables=variables)
