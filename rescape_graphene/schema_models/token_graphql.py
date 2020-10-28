@@ -10,7 +10,7 @@ def graphql_token_auth_mutation(client, variables):
     :return:
     """
     return client.execute('''
-mutation TokenAuthMutation($username: String!, $password: String!) {
+mutation tokenAuthMutation($username: String!, $password: String!) {
   tokenAuth(username: $username, password: $password) {
     token
   }
@@ -24,7 +24,7 @@ def graphql_verify_token_mutation(client, variables):
     :return:
     """
     return client.execute('''
-    mutation VerifyTokenMutation($token: String!) {
+    mutation verifyTokenMutation($token: String!) {
   verifyToken(token: $token) {
     payload
   }
@@ -38,7 +38,7 @@ def graphql_refresh_token_mutation(client, variables):
     :return:
     """
     return client.execute('''
-    mutation RefreshTokenMutation($token: String!) {
+    mutation refreshTokenMutation($token: String!) {
         refreshToken(token: $token) {
         token
     payload
@@ -53,7 +53,7 @@ def graphql_delete_token_cookie_mutation(client, variables):
     :return:
     """
     return client.execute('''
-    mutation DeleteTokenCookieMutation {
+    mutation deleteTokenCookieMutation {
         deleteTokenCookie {
             deleted
         }
@@ -67,7 +67,7 @@ def graphql_delete_refresh_token_cookie_mutation(client, variables):
     :return:
     """
     return client.execute('''
-    mutation DeleteRefreshTokenCookieMutation {
+    mutation deleteRefreshTokenCookieMutation {
         deleteRefreshTokenCookie {
             deleted
         }
