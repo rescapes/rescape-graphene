@@ -6,12 +6,12 @@ from rescape_python_helpers import ramda as R
 
 
 class RescapeTokenMutation(graphene.ObjectType):
-    token_auth_mutation = graphql_jwt.ObtainJSONWebToken.Field()
-    verify_token_mutation = graphql_jwt.Verify.Field()
-    refresh_token_mutation = graphql_jwt.Refresh.Field()
-    delete_token_cookie_mutation = graphql_jwt.DeleteJSONWebTokenCookie.Field()
+    token_auth = graphql_jwt.ObtainJSONWebToken.Field()
+    verify_token = graphql_jwt.Verify.Field()
+    refresh_token = graphql_jwt.Refresh.Field()
+    delete_token_cookie = graphql_jwt.DeleteJSONWebTokenCookie.Field()
     # Long running refresh tokens
-    delete_refresh_token_cookie_mutation = graphql_jwt.DeleteRefreshTokenCookie.Field()
+    delete_refresh_token_cookie = graphql_jwt.DeleteRefreshTokenCookie.Field()
 
 
 class RescapeTokenQuery(graphene.ObjectType):
