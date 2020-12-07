@@ -4,7 +4,6 @@ import traceback
 
 from django.conf import settings
 from graphene_django.views import GraphQLView
-from graphene_django_extras.views import ExtraGraphQLView
 from graphql.error import GraphQLSyntaxError
 from graphql.error import format_error as format_graphql_error
 from graphql.error.located_error import GraphQLLocatedError
@@ -62,7 +61,7 @@ def format_located_error(error):
     return format_internal_error(error.original_error)
 
 
-class SafeGraphQLView(ExtraGraphQLView):
+class SafeGraphQLView(GraphQLView):
 
     def execute_graphql_request(self, *args, **kwargs):
         result = super().execute_graphql_request(*args, **kwargs)
