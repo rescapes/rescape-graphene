@@ -1,4 +1,5 @@
 # https://gist.githubusercontent.com/smmoosavi/033deffe834e6417ed6bb55188a05c88/raw/3393e415f9654f849a89d7e33cfcacaff0372cdd/views.py
+import json
 import logging
 import traceback
 
@@ -8,6 +9,7 @@ from graphql.error import GraphQLSyntaxError
 from graphql.error import format_error as format_graphql_error
 from graphql.error.located_error import GraphQLLocatedError
 
+from rescape_python_helpers import ramda as R
 from .exceptions import ResponseError
 from .str_converters import to_kebab_case, dict_key_to_camel_case
 
@@ -62,16 +64,17 @@ def format_located_error(error):
 
 
 class SafeGraphQLView(GraphQLView):
-    graphiql_template = "graphene/graphiql.html"
 
     def execute_graphql_request(self, *args, **kwargs):
         result = super().execute_graphql_request(*args, **kwargs)
         if result.errors:
+            log.error(json.dumps(R.pick(['operationName', 'variables'], args[1]), indent=4))
             for error in result.errors:
                 if error.source:
                     log.error(error.source.body)
                 # NO way to get stack trace of the original error grrrr
                 log.exception(error)
+
         return result
 
     @staticmethod
