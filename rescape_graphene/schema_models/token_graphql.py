@@ -61,7 +61,7 @@ def graphql_delete_token_cookie_mutation(client, variables):
 
 def graphql_delete_refresh_token_cookie_mutation(client, variables):
     """
-        Deletes the user's cooke
+        Deletes the user's cookie
     :param client:
     :param variables: contains a token key that is the token to update
     :return:
