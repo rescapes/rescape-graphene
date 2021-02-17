@@ -1180,7 +1180,8 @@ def process_filter_kwargs(model, **kwargs):
 
         # Convert filters from _ to __
         R.map_keys_deep(
-            lambda k, v: k.replace('_', '__')
+            # Make sure __ or _ become __
+            lambda k, v: k.replace('__', '_').replace('_', '__')
             if R.any_satisfy(lambda string: '_%s' % string in str(k), R.keys(FILTER_FIELDS))
             else k
         )
