@@ -68,7 +68,7 @@ def resolver_for_dict_list(resource, context, **kwargs):
     selections = resolve_selections(context)
     field_name = context.field_name
     # Value defaults to None. Empty is not the same as None
-    value = R.prop_or(None, field_name, resource)
+    value = getattr(resource, field_name) if hasattr(resource, field_name) else None
 
     return R.map(
         lambda data: pick_selections(selections, data),
