@@ -70,7 +70,7 @@ class SafeGraphQLView(GraphQLView):
         if result.errors:
             log.error(json.dumps(R.pick(['operationName', 'variables'], args[1]), indent=4))
             for error in result.errors:
-                if error.source:
+                if hasattr(error, 'source'):
                     log.error(error.source.body)
                 # NO way to get stack trace of the original error grrrr
                 log.exception(error)
