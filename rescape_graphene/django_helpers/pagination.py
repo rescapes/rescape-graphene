@@ -1,6 +1,6 @@
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from rescape_python_helpers import ramda as R
-from graphene import Int, Boolean, ObjectType, List
+from graphene import Int, Boolean, ObjectType, List, String
 
 from rescape_graphene.graphql_helpers.schema_helpers import DENY
 
@@ -51,6 +51,8 @@ def create_paginated_type_mixin(model_object_type, model_object_type_fields):
         f'PaginatedTypeMixinFor{model_object_type.__name__}',
         (ObjectType,),
         dict(
+            # order_by is extracted for ordering in django style, like '+key,-name'
+            order_by=String(),
             page_size=Int(),
             page=Int(),
             pages=Int(),
