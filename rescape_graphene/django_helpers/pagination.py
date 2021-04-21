@@ -5,7 +5,7 @@ from graphene import Int, Boolean, ObjectType, List, String
 from rescape_graphene.graphql_helpers.schema_helpers import DENY
 
 
-def get_paginator(qs, page_size, page, paginated_type, **kwargs):
+def get_paginator(qs, page_size, page, paginated_type, order_by, **kwargs):
     """
     Adapted from https://gist.github.com/mbrochh/f92594ab8188393bd83c892ef2af25e6
     Creates a pagination_type based on the paginated_type function
@@ -13,11 +13,11 @@ def get_paginator(qs, page_size, page, paginated_type, **kwargs):
     :param page_size:
     :param page:
     :param paginated_type:
+    :param order_by default id. Optional kwarg to order by in django format as a string, e.g. '-key,+name'
     :param kwargs: Additional kwargs to pass paginated_type function, usually unneeded
-    :param kwargs.order_by default id. Optional kwarg to order by in django format as a string, e.g. '-key,+name'
     :return:
     """
-    p = Paginator(qs.order_by(*R.prop_or('id', 'order_by', kwargs).split(',')), page_size)
+    p = Paginator(qs.order_by(*(order_by or 'id').split(',')), page_size)
     try:
         page_obj = p.page(page)
     except PageNotAnInteger:
@@ -52,7 +52,7 @@ def create_paginated_type_mixin(model_object_type, model_object_type_fields):
         (ObjectType,),
         dict(
             # order_by is extracted for ordering in django style, like '+key,-name'
-            order_by=String(),
+            order_by=String(required=False),
             page_size=Int(),
             page=Int(),
             pages=Int(),
@@ -64,6 +64,7 @@ def create_paginated_type_mixin(model_object_type, model_object_type_fields):
 
     paginated_fields = dict(
         page_size=dict(type=Int, graphene_type=Int, create=DENY, update=DENY),
+        order_by=dict(type=String, graphene_type=String, create=DENY, update=DENY),
         page=dict(type=Int, graphene_type=Int, create=DENY, update=DENY),
         pages=dict(type=Int, graphene_type=Int, create=DENY, update=DENY),
         has_next=dict(type=Boolean, graphene_type=Boolean, create=DENY, update=DENY),
@@ -86,7 +87,7 @@ def resolve_paginated_for_type(paginated_type, type_resolver, **kwargs):
     :param type_resolver: The resolver for the non-paginated type, e.g. location_resolver
     :param kwargs: The kwargs Array of prop sets for the non-paginated objects in 'objects'.
     Normally it's just a 1-item array.
-    Other required kwargs are for pagination are page_size and page
+    Other required kwargs are for pagination are page_size and page and optional order_by
     :return: The paginated query
     """
 
@@ -108,5 +109,6 @@ def resolve_paginated_for_type(paginated_type, type_resolver, **kwargs):
         instances,
         R.prop('page_size', kwargs),
         R.prop('page', kwargs),
-        paginated_type
+        paginated_type,
+        R.prop('order_by', kwargs)
     )

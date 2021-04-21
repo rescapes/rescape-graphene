@@ -71,7 +71,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
                 R.prop('id'),
                 model_class.objects.filter(
                     *process_filter_kwargs(model_class, **R.map_keys(underscore, props))
-                ).order_by(*order_by)
+                ).order_by(*order_by.split(','))
             )
         ) -
         set(R.map(R.compose(int, R.prop('id')), first_page_objects))
