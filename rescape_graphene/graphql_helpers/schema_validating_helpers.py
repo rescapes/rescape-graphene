@@ -52,6 +52,10 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
             objects=R.to_array_if_not(props)
         )
     )
+
+    order_by = R.prop_or(None, 'orderBy', props)
+    _props = R.omit(['orderBy'], props)
+
     # Check against errors
     assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
     first_page_objects = R.item_path(['data', result_name, 'objects'], result)
@@ -66,7 +70,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
             R.map(
                 R.prop('id'),
                 model_class.objects.filter(
-                    *process_filter_kwargs(model_class, **R.map_keys(underscore, props))
+                    *process_filter_kwargs(model_class, **R.map_keys(underscore, _props))
                 )
             )
         ) -
@@ -84,7 +88,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
         variables=dict(
             page=page_count_expected,
             page_size=page_info['pageSize'],
-            objects=R.to_array_if_not(props)
+            objects=R.to_array_if_not(_props)
         )
     )
     # Make sure the new_result matches one of the remaining ids
