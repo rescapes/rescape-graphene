@@ -31,7 +31,7 @@ def quiz_model_query(client, model_query_function, result_name, variables, expec
 
 
 def quiz_model_paginated_query(client, model_class, paginated_query, result_name, page_count_expected, props,
-                               omit_props, order_by=None, expect_length=1):
+                               omit_props, order_by=None, page_size=1):
     """
         Tests a pagination query for a model with variables
     :param client: Apollo client
@@ -41,15 +41,16 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     number of items in the database that match props
     :param result_name: The name of the results in data.[result_name].objects
     :param props: The props to query, not including pagination
-    :param order_by: Order by page-level prop
     :param omit_props: Props to omit from assertions because they are nondeterminate
+    :param order_by: Order by page-level prop
+    :param page_size: Default 1
     :return the first result (first page) and final result (last page) for further testing:
     """
     result = paginated_query(
         client,
         variables=dict(
             page=1,
-            page_size=1,
+            page_size=page_size,
             order_by=order_by,
             objects=R.to_array_if_not(props)
         )
@@ -60,7 +61,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
     first_page_objects = R.item_path(['data', result_name, 'objects'], result)
     # Assert we got 1 result because our page is size 1
-    assert expect_length == R.compose(
+    assert page_size == R.compose(
         R.length,
         R.map(R.omit(omit_props)),
     )(first_page_objects)
@@ -78,7 +79,8 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     )
 
     page_info = R.item_path(['data', result_name], result)
-    # We have 1 page pages and thus expect 2 pages that match Oslo
+    # We have page_size pages so there should be a total number of pages
+    # of what we specified for page_count_expected
     assert page_info['pages'] == page_count_expected
     assert page_info['hasNext'] == True
     assert page_info['hasPrev'] == False
