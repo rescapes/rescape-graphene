@@ -7,14 +7,15 @@ import re
 from rescape_graphene.graphql_helpers.schema_helpers import process_filter_kwargs
 
 
-def quiz_model_query(client, model_query_function, result_name, variables):
+def quiz_model_query(client, model_query_function, result_name, variables, expect_length=1):
     """
         Tests a query for a model with variables that produce exactly one result
     :param client: Apollo client
     :param model_query_function: Query function expecting the client and variables
     :param result_name: The name of the result object in the data object
     :param variables: key value variables for the query
-    :return: void
+    :param expect_length: Default 1. Optional number items to expect
+    :return: returns the result for further assertions
     """
     all_result = model_query_function(client)
     assert not R.has('errors', all_result), R.dump_json(R.prop('errors', all_result))
@@ -25,11 +26,12 @@ def quiz_model_query(client, model_query_function, result_name, variables):
     # Check against errors
     assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
     # Simple assertion that the query looks good
-    assert 1 == R.length(R.item_path(['data', result_name], result))
+    assert expect_length == R.length(R.item_path(['data', result_name], result))
+    return result
 
 
 def quiz_model_paginated_query(client, model_class, paginated_query, result_name, page_count_expected, props,
-                               omit_props):
+                               omit_props, expect_length=1):
     """
         Tests a pagination query for a model with variables
     :param client: Apollo client
@@ -40,7 +42,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     :param result_name: The name of the results in data.[result_name].objects
     :param props: The props to query, not including pagination
     :param omit_props: Props to omit from assertions because they are nondeterminate
-    :return:
+    :return the first result (first page) and final result (last page) for further testing:
     """
     result = paginated_query(
         client,
@@ -54,7 +56,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
     first_page_objects = R.item_path(['data', result_name, 'objects'], result)
     # Assert we got 1 result because our page is size 1
-    assert 1 == R.compose(
+    assert expect_length == R.compose(
         R.length,
         R.map(R.omit(omit_props)),
     )(first_page_objects)
@@ -97,6 +99,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     # Make sure it's the last page
     assert new_page_info['hasNext'] == False
     assert new_page_info['hasPrev'] == True
+    return [result, new_result]
 
 
 def quiz_model_versioned_query(client, model_class, model_query, result_name, version_count_expected, props,

@@ -14,9 +14,10 @@ def get_paginator(qs, page_size, page, paginated_type, **kwargs):
     :param page:
     :param paginated_type:
     :param kwargs: Additional kwargs to pass paginated_type function, usually unneeded
+    :param kwargs.order_by default id. Optional kwarg to order by in django format as a string, e.g. '-key,+name'
     :return:
     """
-    p = Paginator(qs.order_by('id'), page_size)
+    p = Paginator(qs.order_by(*R.prop_or('id', 'order_by', kwargs).split(',')), page_size)
     try:
         page_obj = p.page(page)
     except PageNotAnInteger:
@@ -30,7 +31,7 @@ def get_paginator(qs, page_size, page, paginated_type, **kwargs):
         has_next=page_obj.has_next(),
         has_prev=page_obj.has_previous(),
         objects=page_obj.object_list,
-        **kwargs
+        **R.omit(['order_by'], kwargs)
     )
 
 
