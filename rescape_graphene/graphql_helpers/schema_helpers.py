@@ -7,12 +7,13 @@ from decimal import Decimal
 import graphene
 import reversion
 from deepmerge import Merger
+from django.contrib.auth import get_user_model
 from django.contrib.gis.db.models import OneToOneField, ManyToManyField, ForeignKey, \
     GeometryCollectionField
 from django.db.models import JSONField, AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
     BigIntegerField, NullBooleanField, Q
-from graphene import Scalar, InputObjectType, ObjectType
+from graphene import Scalar, InputObjectType, ObjectType, String
 from graphql import parse
 from graphql.language import ast
 from graphql.language.printer import print_ast
@@ -228,7 +229,10 @@ def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_
     # This doesn't apply to Update and Create input types, since we never filter during those operations
     filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if R.equals(READ, crud) else {}
 
-    combined_fields = R.merge(filter_fields, input_fields)
+    # Add 'order_by_field' so the call can specify order by values that match django's syntax or similar
+    order_by_field = dict(order_by=String())
+
+    combined_fields = R.merge_all([order_by_field, filter_fields, input_fields])
     if allowed_fields_only:
         return combined_fields
 
@@ -925,7 +929,7 @@ def _related_model_expressions(related_model, value, key):
             R.head(qs),
             R.tail(qs)
         ))
-        return [Q(**{key:q_expression})]
+        return [Q(**{key: q_expression})]
     else:
         # Process each value to 1 or more result and chain to flatten
         q_expressions = R.chain(
@@ -938,6 +942,7 @@ def _related_model_expressions(related_model, value, key):
             lambda q_expression: Q(**{f'{key}__{q_expression.children[0][0]}': q_expression.children[0][1]}),
             q_expressions
         )
+
 
 def process_query_kwarg(model, key, value):
     """
@@ -1186,6 +1191,21 @@ def process_filter_kwargs(model, **kwargs):
             else k
         )
     )(kwargs)
+
+def query_with_filter_and_order_kwargs(model, **kwargs):
+    """
+        Calls process_filter_kwargs without the order_by kwarg, which if present is split by common and
+        used with query.order_by(*order by clauses)
+    :param model:
+    :param kwargs:
+    :return:
+    """
+    q_expressions = process_filter_kwargs(model, **R.omit(['order_by'], kwargs))
+    query = model.objects.filter(*q_expressions)
+    if not R.has('order_by', kwargs):
+        return query
+    else:
+        return query.order_by(*kwargs['order_by'].split(','))
 
 
 def process_filter_kwargs_with_to_manys(model, process_filter_kwargs=process_filter_kwargs, **kwargs):

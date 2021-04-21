@@ -12,7 +12,7 @@ from ..django_helpers.write_helpers import increment_prop_until_unique
 from ..graphql_helpers.schema_helpers import input_type_fields, REQUIRE, DENY, CREATE, \
     merge_with_django_properties, input_type_parameters_for_update_or_create, UPDATE, \
     guess_update_or_create, graphql_update_or_create, graphql_query, update_or_create_with_revision, \
-    process_filter_kwargs, top_level_allowed_filter_arguments
+    top_level_allowed_filter_arguments, query_with_filter_and_order_kwargs
 
 
 class UserType(DjangoObjectType, DjangoObjectTypeRevisionedMixin):
@@ -56,8 +56,8 @@ class UserQuery(ObjectType):
         :param kwargs:
         :return:
         """
-        q_expressions = process_filter_kwargs(get_user_model(), **kwargs)
-        return get_user_model().objects.filter(*q_expressions)
+
+        return query_with_filter_and_order_kwargs(get_user_model(), **kwargs)
 
     def resolve_current_user(self, info):
         """

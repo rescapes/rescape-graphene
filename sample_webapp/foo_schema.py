@@ -55,8 +55,10 @@ foo_data_fields = dict(
         type=UserType,
         graphene_type=UserType,
         fields=user_fields,
-        type_modifier=lambda *type_and_args: Field(*type_and_args,
-                                                   resolver=model_resolver_for_dict_field(get_user_model()))
+        type_modifier=lambda *type_and_args: Field(
+            *type_and_args,
+            resolver=model_resolver_for_dict_field(get_user_model())
+        )
     )
 )
 
@@ -128,6 +130,7 @@ foo_fields = merge_with_django_properties(FooType, dict(
     )
 ))
 
+
 class FooQuery(ObjectType):
     id = graphene.Int(source='pk')
 
@@ -140,6 +143,7 @@ class FooQuery(ObjectType):
     def resolve_foos(self, info, **kwargs):
         q_expressions_sets = process_filter_kwargs_with_to_manys(Foo, **kwargs)
         return query_sequentially(Foo.objects, 'filter', q_expressions_sets)
+
 
 foo_mutation_config = dict(
     class_name='Foo',
@@ -199,7 +203,7 @@ graphql_query_bars = graphql_query(BarType, bar_fields, 'bars')
 graphql_update_or_create_foo = graphql_update_or_create(foo_mutation_config, foo_fields)
 graphql_query_foos = graphql_query(FooType, foo_fields, 'foos')
 
+
 class FooMutation(graphene.ObjectType):
     create_foo = CreateFoo.Field()
     update_foo = UpdateFoo.Field()
-
