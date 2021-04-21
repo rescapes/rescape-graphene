@@ -31,7 +31,7 @@ def quiz_model_query(client, model_query_function, result_name, variables, expec
 
 
 def quiz_model_paginated_query(client, model_class, paginated_query, result_name, page_count_expected, props,
-                               omit_props, expect_length=1):
+                               omit_props, order_by=None, expect_length=1):
     """
         Tests a pagination query for a model with variables
     :param client: Apollo client
@@ -41,6 +41,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
     number of items in the database that match props
     :param result_name: The name of the results in data.[result_name].objects
     :param props: The props to query, not including pagination
+    :param order_by: Order by page-level prop
     :param omit_props: Props to omit from assertions because they are nondeterminate
     :return the first result (first page) and final result (last page) for further testing:
     """
@@ -49,12 +50,11 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
         variables=dict(
             page=1,
             page_size=1,
+            order_by=order_by,
             objects=R.to_array_if_not(props)
         )
     )
 
-    order_by = R.prop_or(None, 'orderBy', props)
-    _props = R.omit(['orderBy'], props)
 
     # Check against errors
     assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
@@ -70,8 +70,8 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
             R.map(
                 R.prop('id'),
                 model_class.objects.filter(
-                    *process_filter_kwargs(model_class, **R.map_keys(underscore, _props))
-                )
+                    *process_filter_kwargs(model_class, **R.map_keys(underscore, props))
+                ).order_by(*order_by)
             )
         ) -
         set(R.map(R.compose(int, R.prop('id')), first_page_objects))
@@ -88,7 +88,8 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
         variables=dict(
             page=page_count_expected,
             page_size=page_info['pageSize'],
-            objects=R.to_array_if_not(_props)
+            order_by=order_by,
+            objects=R.to_array_if_not(props)
         )
     )
     # Make sure the new_result matches one of the remaining ids
