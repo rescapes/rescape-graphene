@@ -196,43 +196,7 @@ def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_
     modified_parent_type_classes = parent_type_classes if R.isinstance((list, tuple), parent_type_classes) else [
         parent_type_classes]
 
-    # Gather the field_configs for the type we are creating
-    input_type_field_configs = merge_with_django_properties(
-        graphene_class,
-        R.compose(
-            # Remove the update and create constraints,
-            # which would normally disallow using id in create and require using it in update
-            # We're not creating this model instance, we're just referencing it
-            # TODO We could add some other field flag that specifies whether the container needs to reference it or not
-            # such as referenced_in_create = REQUIRE, if the container has to have a reference when the
-            # container is created
-            R.map_with_obj(lambda key, value: R.omit(['create', 'update'], value)),
-            # Only take the id, unless related_input=true for a field
-            lambda fields: R.merge(
-                R.pick(['id'], fields),
-                R.filter_dict(
-                    lambda name_field: R.compose(R.equals(ALLOW), R.prop_or(False, 'related_input'))(name_field[1]),
-                    fields
-                )
-            )
-        )(fields) if crud in [CREATE, UPDATE] else fields
-    ) if django_model_of_graphene_type(graphene_class) else fields
-
-    input_fields = input_type_fields(
-        input_type_field_configs,
-        crud,
-        # Keep our naming unique by appending parent classes, ordered newest to oldest
-        R.concat([graphene_class], modified_parent_type_classes)
-    )
-
-    # These fields allow us to filter on InputTypes when we use them as query arguments
-    # This doesn't apply to Update and Create input types, since we never filter during those operations
-    filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if R.equals(READ, crud) else {}
-
-    # Add 'order_by_field' so the call can specify order by values that match django's syntax or similar
-    order_by_field = dict(order_by=String())
-
-    combined_fields = R.merge_all([order_by_field, filter_fields, input_fields])
+    combined_fields = fields_with_filter_fields(graphene_class, fields, modified_parent_type_classes, crud)
     if allowed_fields_only:
         return combined_fields
 
@@ -254,6 +218,53 @@ def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_
         # Otherwise field_dict_value['fields'] are independent of a Django model and each have their own type property
         combined_fields
     )
+
+
+def fields_with_filter_fields(graphene_class, fields, modified_parent_type_classes, crud):
+    """
+        Adds filter fields to the given fields, so that for field name we add nameContains etc.
+        This is used for search arguments as well as search class instances which can store searches
+    :param graphene_class:
+    :param fields:
+    :param modified_parent_type_classes:
+    :param crud:
+    :return:
+    """
+
+    # Gather the field_configs for the type we are creating
+    input_type_field_configs = merge_with_django_properties(
+        graphene_class,
+        R.compose(
+            # Remove the update and create constraints,
+            # which would normally disallow using id in create and require using it in update
+            # We're not creating this model instance, we're just referencing it
+            # TODO We could add some other field flag that specifies whether the container needs to reference it or not
+            # such as referenced_in_create = REQUIRE, if the container has to have a reference when the
+            # container is created
+            R.map_with_obj(lambda key, value: R.omit(['create', 'update'], value)),
+            # Only take the id, unless related_input=true for a field
+            lambda fields: R.merge(
+                R.pick(['id'], fields),
+                R.filter_dict(
+                    lambda name_field: R.compose(R.equals(ALLOW), R.prop_or(False, 'related_input'))(name_field[1]),
+                    fields
+                )
+            )
+        )(fields) if crud in [CREATE, UPDATE] else fields
+    ) if django_model_of_graphene_type(graphene_class) else fields
+    input_fields = input_type_fields(
+        input_type_field_configs,
+        crud,
+        # Keep our naming unique by appending parent classes, ordered newest to oldest
+        R.concat([graphene_class], modified_parent_type_classes)
+    )
+    # These fields allow us to filter on InputTypes when we use them as query arguments
+    # This doesn't apply to Update and Create input types, since we never filter during those operations
+    filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if R.equals(READ, crud) else {}
+    # Add 'order_by_field' so the call can specify order by values that match django's syntax or similar
+    order_by_field = dict(order_by=String())
+    combined_fields = R.merge_all([order_by_field, filter_fields, input_fields])
+    return combined_fields
 
 
 def related_input_field(field_dict_value, parent_type_classes, *args, **kwargs):
