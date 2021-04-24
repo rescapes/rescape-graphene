@@ -220,15 +220,15 @@ def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_
     )
 
 
-def fields_with_filter_fields(graphene_class, fields, modified_parent_type_classes, crud):
+def fields_with_filter_fields(graphene_class, fields, modified_parent_type_classes=[], crud=None):
     """
         Adds filter fields to the given fields, so that for field name we add nameContains etc.
         This is used for search arguments as well as search class instances which can store searches
     :param graphene_class:
     :param fields:
-    :param modified_parent_type_classes:
-    :param crud:
-    :return:
+    :param modified_parent_type_classes: Optional array of parent types when building embedded classes
+    :param crud: Optional crud value 'create' or 'update' that remove update and create constraints
+    :return: The combined fields
     """
 
     # Gather the field_configs for the type we are creating
