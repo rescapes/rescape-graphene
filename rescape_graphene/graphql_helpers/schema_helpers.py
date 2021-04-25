@@ -196,7 +196,7 @@ def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_
     modified_parent_type_classes = parent_type_classes if R.isinstance((list, tuple), parent_type_classes) else [
         parent_type_classes]
 
-    combined_fields = fields_with_filter_fields(graphene_class, fields, modified_parent_type_classes, crud)
+    combined_fields = fields_with_filter_fields(fields, graphene_class, modified_parent_type_classes, crud)
     if allowed_fields_only:
         return combined_fields
 
@@ -220,14 +220,14 @@ def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_
     )
 
 
-def fields_with_filter_fields(fields, graphene_class, modified_parent_type_classes=[], crud=None):
+def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], crud=None):
     """
         Adds filter fields to the given fields, so that for field name we add nameContains etc.
         This is used for search arguments as well as search class instances which can store searches
     :param fields:
     :param graphene_class: Needed for top level classes that correspond with a Django model and for uniquely
-    naming the internal fields
-    :param modified_parent_type_classes: Optional array of parent types when building embedded classes
+    naming the internal fields. You can also use the class name to avoid self-referencing problems
+    :param parent_type_classes: Optional array of parent types when building embedded classes
     :param crud: Optional crud value 'create' or 'update' that remove update and create constraints
     :return: The combined fields
     """
@@ -257,7 +257,7 @@ def fields_with_filter_fields(fields, graphene_class, modified_parent_type_class
         input_type_field_configs,
         crud,
         # Keep our naming unique by appending parent classes, ordered newest to oldest
-        R.concat([graphene_class], modified_parent_type_classes)
+        R.concat([graphene_class], parent_type_classes)
     )
     # These fields allow us to filter on InputTypes when we use them as query arguments
     # This doesn't apply to Update and Create input types, since we never filter during those operations
