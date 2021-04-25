@@ -220,12 +220,13 @@ def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_
     )
 
 
-def fields_with_filter_fields(fields, graphene_class=None, modified_parent_type_classes=[], crud=None):
+def fields_with_filter_fields(fields, graphene_class, modified_parent_type_classes=[], crud=None):
     """
         Adds filter fields to the given fields, so that for field name we add nameContains etc.
         This is used for search arguments as well as search class instances which can store searches
     :param fields:
-    :param graphene_class: Only needed for top level classes that correspond with a Django model
+    :param graphene_class: Needed for top level classes that correspond with a Django model and for uniquely
+    naming the internal fields
     :param modified_parent_type_classes: Optional array of parent types when building embedded classes
     :param crud: Optional crud value 'create' or 'update' that remove update and create constraints
     :return: The combined fields
@@ -251,7 +252,7 @@ def fields_with_filter_fields(fields, graphene_class=None, modified_parent_type_
                 )
             )
         )(fields) if crud in [CREATE, UPDATE] else fields
-    ) if graphene_class and django_model_of_graphene_type(graphene_class) else fields
+    ) if django_model_of_graphene_type(graphene_class) else fields
     input_fields = input_type_fields(
         input_type_field_configs,
         crud,
