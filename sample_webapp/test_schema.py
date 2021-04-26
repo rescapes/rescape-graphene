@@ -1,6 +1,7 @@
 import logging
 
 import pytest
+from graphql.error import format_error
 from graphql_jwt.testcases import JSONWebTokenTestCase
 from rescape_python_helpers import ramda as R
 from django.contrib.auth.hashers import make_password
@@ -72,7 +73,8 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
 
     def test_query(self):
         user_results = graphql_query_users(self.client)
-        assert not R.prop('errors', user_results), R.dump_json(R.prop('errors', user_results))
+        format_error(R.prop('errors', user_results)[0])
+        assert not R.prop('errors', user_results), R.dump_json(R.map(lambda e: format_error(e), R.prop('errors', user_results)))
         assert 2 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'users'], user_results)))
 
         # Query using for foos based on the related User
@@ -85,7 +87,7 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
                 name_contains_not='jaberwaki'
             )
         )
-        assert not R.prop('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
+        assert not R.prop('errors', foo_results), R.dump_json(R.map(lambda e: format_error(e), R.prop('errors', foo_results)))
         assert 1 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'foos'], foo_results)))
         # Make sure the Django instance in the json blob was resolved
         assert self.cat.id == R.item_path(['data', 'foos', 0, 'data', 'friend', 'id'], foo_results)
@@ -95,14 +97,14 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
         foo_results = graphql_query_foos(self.client,
                                          variables=dict(key='fookit')
                                          )
-        assert not R.prop('errors', foo_results), R.dump_json(R.prop('errors', foo_results))
+        assert not R.prop('errors', foo_results), R.dump_json(R.map(lambda e: format_error(e), R.prop('errors', foo_results)))
         assert 1 == R.length(R.map(R.omit_deep(omit_props), R.item_path(['data', 'foos'], foo_results)))
 
     def test_create_user(self):
         values = dict(username="dino", firstName='T', lastName='Rex',
                       password=make_password("rrrrhhh", salt='not_random'))
         result = graphql_update_or_create_user(self.client, values)
-        assert not R.prop('errors', result), R.dump_json(R.prop('errors', result))
+        assert not R.prop('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.prop('errors', result)))
         # look at the users added and omit the non-determinant values
         self.assertMatchSnapshot(
             R.omit_deep(omit_props, R.item_path(['data', 'createUser', 'user'], result)))
@@ -160,7 +162,7 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
         )
         result = graphql_update_or_create_foo(self.client, values)
         result_path_partial = R.item_path(['data', 'createFoo', 'foo'])
-        assert not R.prop('errors', result), R.dump_json(R.prop('errors', result))
+        assert not R.prop('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.prop('errors', result)))
         created = result_path_partial(result)
         # look at the Foo added and omit the non-determinant dateJoined
         self.assertMatchSnapshot(R.omit_deep(omit_props, created))
@@ -168,7 +170,7 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
         # Try creating the same Foo again, because of the unique constraint on key and the unique_with property
         # on its field definition value, it will increment to luxembourg1
         new_result = graphql_update_or_create_foo(self.client, values)
-        assert not R.prop('errors', new_result), R.dump_json(R.prop('errors', new_result))
+        assert not R.prop('errors', new_result), R.dump_json(R.map(lambda e: format_error(e), R.prop('errors', new_result)))
         created_too = result_path_partial(new_result)
         assert created['id'] != created_too['id']
         assert created_too['key'].startswith('luxembourg') and created_too['key'] != 'luxembourg'
@@ -186,5 +188,5 @@ class TestSchema(JSONWebTokenTestCase, TestCase):
             self.client,
             dict(id=id, firstName='Al', lastName="Lissaurus")
         )
-        assert not R.prop('errors', result), R.dump_json(R.prop('errors', result))
+        assert not R.prop('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.prop('errors', result)))
         self.assertMatchSnapshot(R.omit_deep(omit_props, R.item_path(['data', 'updateUser', 'user'], result)))

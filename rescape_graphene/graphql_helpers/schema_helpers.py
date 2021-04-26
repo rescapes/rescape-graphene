@@ -84,23 +84,23 @@ FILTER_FIELDS = R.compose(
 
             # standard lookups
             'exact': dict(),  # this is the default, but keep so we can do negative queries, i.e. exact__not
-            #'iexact': dict(),
+            # 'iexact': dict(),
             'contains': dict(),
-            #'icontains': dict(),
+            # 'icontains': dict(),
             'in': dict(type_modifier=lambda typ: graphene.List(typ)),
             'gt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'gte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'lt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'lte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'startswith': dict(allowed_types=[graphene.String]),
-            #'istartswith': dict(allowed_types=[graphene.String]),
+            # 'istartswith': dict(allowed_types=[graphene.String]),
             'endswith': dict(allowed_types=[graphene.String]),
-            #'iendswith': dict(allowed_types=[graphene.String]),
+            # 'iendswith': dict(allowed_types=[graphene.String]),
             # Range expects a 2 item tuple, so give it a list
             'range': dict(type_modifier=lambda typ: graphene.List(typ)),
             'isnull': dict(),
-            #'regex': dict(allowed_types=[graphene.String]),
-            #'iregex': dict(allowed_types=[graphene.String]),
+            # 'regex': dict(allowed_types=[graphene.String]),
+            # 'iregex': dict(allowed_types=[graphene.String]),
             'search': dict(allowed_types=[graphene.String]),
 
             # postgres lookups
@@ -112,7 +112,7 @@ FILTER_FIELDS = R.compose(
             'has_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
             'has_any_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
             # groups of 3 characters for similarity recognition
-            #'trigram_similar': dict(allowed_types=[graphene.String])
+            # 'trigram_similar': dict(allowed_types=[graphene.String])
         }
     )
 )(settings)
@@ -166,14 +166,15 @@ def _memoize(args):
         # TODO We use the parent_type_class to make each type unique. I don't know why graphene won't let us reuse
         # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
         # of a Region or the user of a Group.
-        args[2] if R.length(args) >= 3 and R.isinstance((list, tuple), args[2]) else [args[2]],
-        args[3] if R.length(args) >= 4 else False,
-        args[4] if R.length(args) >= 5 else False
+        args[2] if R.length(args) > 2 and R.isinstance((list, tuple), args[2]) else [args[2]],
+        # None of the arguments can be allowed to cause duplicate InputType classes. Each class should never be
+        # called with variations
     ]
 
 
-@memoize(map_args=_memoize)
-def input_type_class(field_config, crud, parent_type_classes=[], fields_only=False, with_filter_fields=True, create_filter_fields_for_mutations=False):
+@memoize(map_args=_memoize, map_kwargs=lambda kwargs: '')
+def input_type_class(field_config, crud, parent_type_classes=[], fields_only=False, with_filter_fields=True,
+                     create_filter_fields_for_mutations=False):
     """
     An InputObjectType subclass for use as nested query argument types and mutation argument types
     The subclass is dynamically created based on the field_dict_value['graphene_type'] and the crud type.
@@ -204,7 +205,12 @@ def input_type_class(field_config, crud, parent_type_classes=[], fields_only=Fal
         parent_type_classes]
 
     combined_fields = fields_with_filter_fields(
-        fields, graphene_class, modified_parent_type_classes, crud, with_filter_fields, create_filter_fields_for_mutations
+        fields,
+        graphene_class,
+        parent_type_classes=modified_parent_type_classes,
+        crud=crud,
+        with_filter_fields=with_filter_fields,
+        create_filter_fields_for_mutations=create_filter_fields_for_mutations
     )
     if fields_only:
         return combined_fields
@@ -229,7 +235,8 @@ def input_type_class(field_config, crud, parent_type_classes=[], fields_only=Fal
     )
 
 
-def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], crud=None, with_filter_fields=True, create_filter_fields_for_mutations=False):
+def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], crud=None, with_filter_fields=True,
+                              create_filter_fields_for_mutations=False):
     """
         Adds filter fields to the given fields, so that for field name we add nameContains etc.
         This is used for search arguments as well as search class instances which can store searches
@@ -275,7 +282,8 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
     )
     # These fields allow us to filter on InputTypes when we use them as query arguments
     # This doesn't apply to Update and Create input types, since we never filter during those operations
-    filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if with_filter_fields and (R.equals(READ, crud) or create_filter_fields_for_mutations) else {}
+    filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if with_filter_fields and (
+            R.equals(READ, crud) or create_filter_fields_for_mutations) else {}
     # Add 'order_by_field' so the call can specify order by values that match django's syntax or similar
     order_by_field = dict(order_by=String())
     combined_fields = R.merge_all([order_by_field, filter_fields, input_fields])
@@ -628,8 +636,14 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud, create_fi
     if inspect.isclass(graphene_type) and issubclass(graphene_type, (ObjectType)):
         # ObjectTypes must be converted to a dynamic InputTypeVersion
         fields = R.prop('fields', field_config)
-        resolved_graphene_type = input_type_class(dict(graphene_type=graphene_type, fields=fields), crud,
-                                                  parent_type_classes, create_filter_fields_for_mutations)
+        resolved_graphene_type = input_type_class(
+            dict(graphene_type=graphene_type, fields=fields),
+            crud,
+            parent_type_classes,
+            fields_only=False,
+            with_filter_fields=True,
+            create_filter_fields_for_mutations=create_filter_fields_for_mutations
+        )
     elif R.isfunction(graphene_type) and \
             R.compose(R.equals(0), R.length, R.prop('parameters'), inspect.signature)(graphene_type):
         # If out graphene_type is a no arg lambda it means it needs lazy evaluation to avoid circular imports
@@ -657,17 +671,18 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud, create_fi
             required=R.prop_eq_or_in_or(False, crud, REQUIRE, field_config)
         )
 
-def input_type_fields(fields_dict, crud, parent_type_classes=[], create_filter_fields=False):
+
+def input_type_fields(fields_dict, crud, parent_type_classes=[], create_filter_fields_for_mutations=False):
     """
     :param fields_dict: The fields_dict for the Django model or json data
     :param crud: INSERT, UPDATE, or DELETE. If None the type is guessed
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
-    :param create_filter_fields: Default false. Only used by Search types to add filter versions of their fields
+    :param create_filter_fields_for_mutations: Default false. Only used by Search types to add filter versions of their fields
     :return:
     """
     crud = crud or guess_update_or_create(fields_dict)
     return R.map_dict(
-        lambda field_config: instantiate_graphene_type(field_config, parent_type_classes, crud, create_filter_fields),
+        lambda field_config: instantiate_graphene_type(field_config, parent_type_classes, crud, create_filter_fields_for_mutations),
         # Filter out values that are deny
         # This means that if the user tries to pass these fields to graphql an error will occur
         R.filter_dict(
@@ -1223,6 +1238,7 @@ def process_filter_kwargs(model, **kwargs):
             else k
         )
     )(kwargs)
+
 
 def query_with_filter_and_order_kwargs(model, **kwargs):
     """

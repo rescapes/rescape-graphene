@@ -18,13 +18,13 @@ def quiz_model_query(client, model_query_function, result_name, variables, expec
     :return: returns the result for further assertions
     """
     all_result = model_query_function(client)
-    assert not R.has('errors', all_result), R.dump_json(R.prop('errors', all_result))
+    assert not R.has('errors', all_result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', all_result))))
     result = model_query_function(
         client,
         variables=variables
     )
     # Check against errors
-    assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+    assert not R.has('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', result))))
     # Simple assertion that the query looks good
     assert expect_length == R.length(R.item_path(['data', result_name], result))
     return result
@@ -58,7 +58,7 @@ def quiz_model_paginated_query(client, model_class, paginated_query, result_name
 
 
     # Check against errors
-    assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+    assert not R.has('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', result))))
     first_page_objects = R.item_path(['data', result_name, 'objects'], result)
     # Assert we got 1 result because our page is size 1
     assert page_size == R.compose(
@@ -132,7 +132,7 @@ def quiz_model_versioned_query(client, model_class, model_query, result_name, ve
         )
     )
     # Check against errors
-    assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+    assert not R.has('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', result))))
     assert R.compose(
         R.length,
         R.item_str_path_or([], f'data.{result_name}.objects')
@@ -156,7 +156,7 @@ def quiz_model_mutation_create(client, graphql_update_or_create_function, result
     result = graphql_update_or_create_function(client, values=values)
 
     result_path_partial = R.item_str_path(f'data.{result_path}')
-    assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+    assert not R.has('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', result))))
     # Get the created value, using underscore to make the camelcase keys match python keys
     created = R.map_keys(
         lambda key: underscore(key),
@@ -167,7 +167,7 @@ def quiz_model_mutation_create(client, graphql_update_or_create_function, result
     # Try creating with the same values again, unique constraints will apply to force a create or an update will occur
     if second_create_results:
         new_result = graphql_update_or_create_function(client, values)
-        assert not R.has('errors', new_result), R.dump_json(R.prop('errors', new_result))
+        assert not R.has('errors', new_result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', new_result))))
         created_too = result_path_partial(new_result)
         if second_create_does_update:
             assert created['id'] == created_too['id']
@@ -195,7 +195,7 @@ def quiz_model_mutation_update(client, graphql_update_or_create_function, create
     :return:
     """
     result = graphql_update_or_create_function(client, values=values)
-    assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+    assert not R.has('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', result))))
     # Extract the result and map the graphql keys to match the python keys
     created = R.compose(
         lambda r: R.map_keys(lambda key: underscore(key), r),
@@ -216,7 +216,7 @@ def quiz_model_mutation_update(client, graphql_update_or_create_function, create
             update_values
         ])
     )
-    assert not R.has('errors', update_result), R.dump_json(R.prop('errors', update_result))
+    assert not R.has('errors', update_result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', update_result))))
     updated = R.item_str_path(f'data.{update_path}', update_result)
     assert created['id'] == updated['id']
     assert update_values == pick_deep(

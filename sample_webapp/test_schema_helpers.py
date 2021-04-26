@@ -63,4 +63,4 @@ def assert_no_errors(result):
     :param result: The request Result
     :return: None
     """
-    assert not (R.prop_or(False, 'errors', result) and R.prop('errors', result)), R.dump_json(R.prop('errors', result))
+    assert not (R.prop_or(False, 'errors', result) and R.prop('errors', result)), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', result))))

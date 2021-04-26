@@ -68,13 +68,13 @@ class UserTypeCase(TestCase):
         result = user_schema.graphql_query_current_user(
             self.client,
         )
-        assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+        assert not R.has('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', result))))
 
     def test_query_current_user_no_auth(self):
         result = user_schema.graphql_query_current_user(
             client_for_testing(schema, None)
         )
-        assert not R.has('errors', result), R.dump_json(R.prop('errors', result))
+        assert not R.has('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', result))))
 
     def test_create(self):
         values = dict(username="dino", firstName='T', lastName='Rex',
