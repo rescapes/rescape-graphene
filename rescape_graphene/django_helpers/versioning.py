@@ -6,7 +6,8 @@ from graphene_django import DjangoObjectType
 from rescape_python_helpers import ramda as R
 from reversion.models import Version, Revision
 
-from rescape_graphene.graphql_helpers.schema_helpers import DENY, merge_with_django_properties
+from rescape_graphene.graphql_helpers.schema_helpers import DENY, merge_with_django_properties, \
+    top_level_allowed_filter_arguments
 from rescape_graphene.schema_models.user_schema import UserType, user_fields
 
 
@@ -149,4 +150,17 @@ def resolve_version_instance(model_versioned_type, resolver, **kwargs):
     return get_versioner(
         objs,
         model_versioned_type,
+    )
+
+def versioning_allowed_filter_arguments(fields, graphene_type):
+    """
+       top_level_allowed_filter_arguments for versioned types so we don't add filters to the top-level
+       props like revisionContains. We don't (currenlty) want a filter like revisionContains
+    :param fields:
+    :param graphene_type:
+    :return:
+    """
+    return R.concat(
+        top_level_allowed_filter_arguments(R.omit(['instance'], graphene_type), with_filter_fields=True),
+        top_level_allowed_filter_arguments(R.pick(['instance'], graphene_type))
     )

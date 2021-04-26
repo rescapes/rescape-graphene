@@ -544,7 +544,7 @@ def add_filters(argument_dict):
     )(argument_dict)
 
 
-def top_level_allowed_filter_arguments(fields, graphene_type):
+def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields=True):
     """
         For top-level read calls.
         Like allowed_filter_arguments but only used for arguments and adds filter variables like id_contains.
@@ -552,9 +552,15 @@ def top_level_allowed_filter_arguments(fields, graphene_type):
         camel case
     :param fields: The fields for the graphene type
     :param graphen_type: The graphene type
+    :param with_filter_fields Default True. If False don't create filter fields. Only needed for things like
+    pagination and version types where we don't want filters on the top level properties like page number, but
+    do want it recursively on the objects property
     :return: dict of field keys and there graphene type, either a primitive or input type
     """
-    return input_type_class(dict(fields=fields, graphene_type=graphene_type), 'read', [], True)
+    return input_type_class(
+        dict(fields=fields, graphene_type=graphene_type),
+        'read', [], fields_only=True, with_filter_fields=with_filter_fields
+    )
 
 
 def allowed_filter_arguments(fields_dict, graphene_type):

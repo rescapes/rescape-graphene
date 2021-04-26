@@ -115,7 +115,14 @@ def resolve_paginated_for_type(paginated_type, type_resolver, **kwargs):
 
 
 def pagination_allowed_filter_arguments(fields, graphene_type):
-    R.concat(
-        R.omit(['object'], fields),
-        top_level_allowed_filter_arguments(R.pick(['object'], graphene_type))
+    """
+       top_level_allowed_filter_arguments for paginated types so we don't add filters to the top-level
+       props like page. We don't want a filter like pageContains
+    :param fields:
+    :param graphene_type:
+    :return:
+    """
+    return R.concat(
+        top_level_allowed_filter_arguments(R.omit(['objects'], graphene_type), with_filter_fields=True),
+        top_level_allowed_filter_arguments(R.pick(['objects'], graphene_type))
     )
