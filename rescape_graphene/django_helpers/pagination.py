@@ -2,7 +2,7 @@ from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from rescape_python_helpers import ramda as R
 from graphene import Int, Boolean, ObjectType, List, String
 
-from rescape_graphene.graphql_helpers.schema_helpers import DENY
+from rescape_graphene.graphql_helpers.schema_helpers import DENY, top_level_allowed_filter_arguments
 
 
 def get_paginator(qs, page_size, page, paginated_type, order_by, **kwargs):
@@ -111,4 +111,11 @@ def resolve_paginated_for_type(paginated_type, type_resolver, **kwargs):
         R.prop('page', kwargs),
         paginated_type,
         R.prop('order_by', kwargs)
+    )
+
+
+def pagination_allowed_filter_arguments(fields, graphene_type):
+    R.concat(
+        R.omit(['object'], fields),
+        top_level_allowed_filter_arguments(R.pick(['object'], graphene_type))
     )

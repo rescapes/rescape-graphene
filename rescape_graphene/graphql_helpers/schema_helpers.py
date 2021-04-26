@@ -172,7 +172,7 @@ def _memoize(args):
 
 
 @memoize(map_args=_memoize)
-def input_type_class(field_config, crud, parent_type_classes=[], field_only=False):
+def input_type_class(field_config, crud, parent_type_classes=[], fields_only=False, with_filter_fields=True):
     """
     An InputObjectType subclass for use as nested query argument types and mutation argument types
     The subclass is dynamically created based on the field_dict_value['graphene_type'] and the crud type.
@@ -185,6 +185,9 @@ def input_type_class(field_config, crud, parent_type_classes=[], field_only=Fals
     based on the parent ancestry
     :param fields_only Default False. Don't create the inpub class, just return the fields that are created,
     including filter fields. This is like calling fields_with_filter_fields with a bit of prep
+    :param with_filter_fields Default True. If False don't create filter fields. Only needed for things like
+    pagination and version types where we don't want filters on the top level properties like page number, but
+    do want it recursively on the objects property
     :return: An InputObjectType subclass
     """
     # Get the Graphene type. This comes from graphene_type if the class containing the field is a Django Model,
@@ -197,8 +200,8 @@ def input_type_class(field_config, crud, parent_type_classes=[], field_only=Fals
     modified_parent_type_classes = parent_type_classes if R.isinstance((list, tuple), parent_type_classes) else [
         parent_type_classes]
 
-    combined_fields = fields_with_filter_fields(fields, graphene_class, modified_parent_type_classes, crud)
-    if field_only:
+    combined_fields = fields_with_filter_fields(fields, graphene_class, modified_parent_type_classes, crud, with_filter_fields)
+    if fields_only:
         return combined_fields
 
     return type(
@@ -221,7 +224,7 @@ def input_type_class(field_config, crud, parent_type_classes=[], field_only=Fals
     )
 
 
-def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], crud=None):
+def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], crud=None, with_filter_fields=True):
     """
         Adds filter fields to the given fields, so that for field name we add nameContains etc.
         This is used for search arguments as well as search class instances which can store searches
@@ -230,6 +233,9 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
     naming the internal fields. You can also use the class name to avoid self-referencing problems
     :param parent_type_classes: Optional array of parent types when building embedded classes
     :param crud: Optional crud value 'create' or 'update' that remove update and create constraints
+    :param with_filter_fields Default True. If False don't create filter fields. Only needed for things like
+    pagination and version types where we don't want filters on the top level properties like page number, but
+    do want it recursively on the objects property
     :return: The combined fields
     """
 
@@ -262,7 +268,7 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
     )
     # These fields allow us to filter on InputTypes when we use them as query arguments
     # This doesn't apply to Update and Create input types, since we never filter during those operations
-    filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if R.equals(READ, crud) else {}
+    filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if with_filter_fields and R.equals(READ, crud) else {}
     # Add 'order_by_field' so the call can specify order by values that match django's syntax or similar
     order_by_field = dict(order_by=String())
     combined_fields = R.merge_all([order_by_field, filter_fields, input_fields])
