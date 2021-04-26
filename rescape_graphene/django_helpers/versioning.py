@@ -154,13 +154,11 @@ def resolve_version_instance(model_versioned_type, resolver, **kwargs):
 
 def versioning_allowed_filter_arguments(fields, graphene_type):
     """
+        TODO no longer needed. version props filter props are filtered out in schema_helpers
        top_level_allowed_filter_arguments for versioned types so we don't add filters to the top-level
        props like revisionContains. We don't (currenlty) want a filter like revisionContains
     :param fields:
     :param graphene_type:
     :return:
     """
-    return R.merge(
-        top_level_allowed_filter_arguments(R.omit(['instance'], fields), graphene_type, with_filter_fields=False),
-        top_level_allowed_filter_arguments(R.pick(['instance'], fields), graphene_type)
-    )
+    return top_level_allowed_filter_arguments(fields, graphene_type)

@@ -53,6 +53,10 @@ READ = 'read'
 UPDATE = 'update'
 DELETE = 'delete'
 
+# Block complex types from being filtered on
+# TODO
+NON_COMPLEX_TYPES = [graphene.Date, graphene.DateTime, graphene.Int, graphene.Boolean, graphene.String, graphene.List]
+
 # From django-filters. Whenever graphene supports filtering without Relay we can get rid of this here
 # Educated guesss about what types for each to support. Django/Postgres might support fewer or more of these
 # combinations than I'm aware of
@@ -70,8 +74,10 @@ FILTER_FIELDS = R.compose(
         lambda settings: settings.TESTING,
         # Minimum set for debugging speed
         lambda _: {
+            # I think anything can have a contains filter, even complex types, because we might want
+            # to test if a complex type contains certain javascript
             'contains': dict(),
-            'in': dict(type_modifier=lambda typ: graphene.List(typ))
+            'in': dict(type_modifier=lambda typ: graphene.List(typ), allowed_types=NON_COMPLEX_TYPES)
         },
         lambda _: {
             'year': dict(allowed_types=[graphene.Date, graphene.DateTime]),
@@ -83,11 +89,13 @@ FILTER_FIELDS = R.compose(
             'second': dict(allowed_types=[graphene.DateTime]),
 
             # standard lookups
-            'exact': dict(),  # this is the default, but keep so we can do negative queries, i.e. exact__not
-            # 'iexact': dict(),
+            'exact': dict(allowed_types=NON_COMPLEX_TYPES),  # this is the default, but keep so we can do negative queries, i.e. exact__not
+            # 'iexact': dict(allowed_types=NON_COMPLEX_TYPES),
+            # I think anything can have a contains filter, even complex types, because we might want
+            # to test if a complex type contains certain javascript
             'contains': dict(),
             # 'icontains': dict(),
-            'in': dict(type_modifier=lambda typ: graphene.List(typ)),
+            'in': dict(type_modifier=lambda typ: graphene.List(typ), allowed_types=NON_COMPLEX_TYPES),
             'gt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'gte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'lt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
@@ -97,14 +105,14 @@ FILTER_FIELDS = R.compose(
             'endswith': dict(allowed_types=[graphene.String]),
             # 'iendswith': dict(allowed_types=[graphene.String]),
             # Range expects a 2 item tuple, so give it a list
-            'range': dict(type_modifier=lambda typ: graphene.List(typ)),
-            'isnull': dict(),
+            'range': dict(type_modifier=lambda typ: graphene.List(typ), allowed_types=NON_COMPLEX_TYPES),
+            'isnull': dict(allowed_types=NON_COMPLEX_TYPES),
             # 'regex': dict(allowed_types=[graphene.String]),
             # 'iregex': dict(allowed_types=[graphene.String]),
             'search': dict(allowed_types=[graphene.String]),
 
             # postgres lookups
-            'contained_by': dict(),
+            'contained_by': dict(allowed_types=NON_COMPLEX_TYPES),
             # Date overlap
             'overlap': dict(allowed_types=[graphene.Date, graphene.DateTime]),
             # These are probably for json types so maybe useful
@@ -116,6 +124,13 @@ FILTER_FIELDS = R.compose(
         }
     )
 )(settings)
+
+# Exclude some common prop keys, like for revisioning, that should never get filters.
+# For instance, we don't want to create revision_id_contains or revision_id_in,
+# because we don't want to be able to search for revisions by an id range
+EXCLUDED_PROP_KEYS_FROM_FILTERING = [
+    'order_by', 'version_number', 'revision', 'revision_id', 'page', 'pages', 'page_size', 'has_next', 'has_prev'
+]
 
 
 # https://github.com/graphql-python/graphene-django/issues/124
@@ -278,7 +293,7 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
         input_type_field_configs,
         crud,
         # Keep our naming unique by appending parent classes, ordered newest to oldest
-        R.concat([graphene_class], parent_type_classes)
+        R.concat([graphene_class], to_array_if_not(parent_type_classes))
     )
     # These fields allow us to filter on InputTypes when we use them as query arguments
     # This doesn't apply to Update and Create input types, since we never filter during those operations
@@ -523,8 +538,9 @@ def allowed_filter_pairs(field_name, graphene_type):
         ],
         # Only allow filters compliant with the type of pair[1]
         R.filter_dict(
-            lambda keyvalue: not R.has('allowed_types', keyvalue[1]) or R.any_satisfy(
-                lambda typ: issubclass(graphene_type, typ), keyvalue[1]['allowed_types']
+            lambda keyvalue: field_name not in EXCLUDED_PROP_KEYS_FROM_FILTERING and (
+                    not R.has('allowed_types', keyvalue[1]) or
+                    R.any_satisfy(lambda typ: issubclass(graphene_type, typ), keyvalue[1]['allowed_types'])
             ),
             FILTER_FIELDS
         )
@@ -559,7 +575,8 @@ def add_filters(argument_dict):
     )(argument_dict)
 
 
-def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields=True):
+def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields=True,
+                                       create_filter_fields_for_mutations=False):
     """
         For top-level read calls.
         Like allowed_filter_arguments but only used for arguments and adds filter variables like id_contains.
@@ -574,7 +591,8 @@ def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields
     """
     return input_type_class(
         dict(fields=fields, graphene_type=graphene_type),
-        'read', [], fields_only=True, with_filter_fields=with_filter_fields
+        'read', [], fields_only=True, with_filter_fields=with_filter_fields,
+        create_filter_fields_for_mutations=create_filter_fields_for_mutations,
     )
 
 
@@ -682,7 +700,8 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[], create_filter_f
     """
     crud = crud or guess_update_or_create(fields_dict)
     return R.map_dict(
-        lambda field_config: instantiate_graphene_type(field_config, parent_type_classes, crud, create_filter_fields_for_mutations),
+        lambda field_config: instantiate_graphene_type(field_config, parent_type_classes, crud,
+                                                       create_filter_fields_for_mutations),
         # Filter out values that are deny
         # This means that if the user tries to pass these fields to graphql an error will occur
         R.filter_dict(
@@ -788,7 +807,7 @@ def graphql_query(graphene_type, fields, query_name):
     :param graphene_type: The graphene type. This is used to know the type of the input fields
     :param fields: The fields of the type. This is a dict key by field name and valued by a dict. See sample_schema.py
     for examples
-    :param query_name:
+    :param query_name: The name of the query
     :returns A lambda that expects a Graphene client and **kwargs that contain kwargs for the client.execute call.
     The only key allowed is variables, which contains param key values. Example: variables={'user': 'Peter'}
     This results in query whatever(id: String!) { query_name(id: id) ... }

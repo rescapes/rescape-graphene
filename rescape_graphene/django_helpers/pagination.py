@@ -116,13 +116,13 @@ def resolve_paginated_for_type(paginated_type, type_resolver, **kwargs):
 
 def pagination_allowed_filter_arguments(fields, graphene_type):
     """
+        # TODO Filtering in schema_helperws keeps page variables from being having filters, so this function isn't
+        # really needed now
        top_level_allowed_filter_arguments for paginated types so we don't add filters to the top-level
        props like page. We don't want a filter like pageContains
     :param fields:
     :param graphene_type:
     :return:
     """
-    return R.merge(
-        top_level_allowed_filter_arguments(R.omit(['objects'], fields), graphene_type, with_filter_fields=False),
-        top_level_allowed_filter_arguments(R.pick(['objects'], fields), graphene_type)
-    )
+
+    return top_level_allowed_filter_arguments(fields, graphene_type)
