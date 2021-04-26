@@ -167,7 +167,7 @@ def _memoize(args):
         # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
         # of a Region or the user of a Group.
         args[2] if R.length(args) >= 3 and R.isinstance((list, tuple), args[2]) else [args[2]],
-        args[3] if R.length(args) >= 4 else False
+        args[3] if R.length(args) >= 4 else False,
         args[4] if R.length(args) >= 5 else False
     ]
 
@@ -657,9 +657,6 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud, create_fi
             required=R.prop_eq_or_in_or(False, crud, REQUIRE, field_config)
         )
 
-def _instantiate_graphene_type(create_filter_fields, field_config):
-    return instantiate_graphene_type(field_config, parent_type_classes, crud),
-
 def input_type_fields(fields_dict, crud, parent_type_classes=[], create_filter_fields=False):
     """
     :param fields_dict: The fields_dict for the Django model or json data
@@ -670,7 +667,7 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[], create_filter_f
     """
     crud = crud or guess_update_or_create(fields_dict)
     return R.map_dict(
-        lambda field_config: _insantiate_graphene_type(create_filter_fields, field_config),
+        lambda field_config: instantiate_graphene_type(field_config, parent_type_classes, crud, create_filter_fields),
         # Filter out values that are deny
         # This means that if the user tries to pass these fields to graphql an error will occur
         R.filter_dict(
