@@ -122,7 +122,7 @@ def pagination_allowed_filter_arguments(fields, graphene_type):
     :param graphene_type:
     :return:
     """
-    return R.concat(
-        top_level_allowed_filter_arguments(R.omit(['objects'], graphene_type), with_filter_fields=True),
-        top_level_allowed_filter_arguments(R.pick(['objects'], graphene_type))
+    return R.merge(
+        top_level_allowed_filter_arguments(R.omit(['objects'], fields), graphene_type, with_filter_fields=False),
+        top_level_allowed_filter_arguments(R.pick(['objects'], fields), graphene_type)
     )

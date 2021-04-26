@@ -160,7 +160,7 @@ def versioning_allowed_filter_arguments(fields, graphene_type):
     :param graphene_type:
     :return:
     """
-    return R.concat(
-        top_level_allowed_filter_arguments(R.omit(['instance'], graphene_type), with_filter_fields=True),
-        top_level_allowed_filter_arguments(R.pick(['instance'], graphene_type))
+    return R.merge(
+        top_level_allowed_filter_arguments(R.omit(['instance'], fields), graphene_type, with_filter_fields=False),
+        top_level_allowed_filter_arguments(R.pick(['instance'], fields), graphene_type)
     )
