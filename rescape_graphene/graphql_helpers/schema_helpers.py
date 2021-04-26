@@ -71,7 +71,6 @@ FILTER_FIELDS = R.compose(
         # Minimum set for debugging speed
         lambda _: {
             'contains': dict(),
-            'icontains': dict(),
             'in': dict(type_modifier=lambda typ: graphene.List(typ))
         },
         lambda _: {
@@ -85,23 +84,23 @@ FILTER_FIELDS = R.compose(
 
             # standard lookups
             'exact': dict(),  # this is the default, but keep so we can do negative queries, i.e. exact__not
-            'iexact': dict(),
+            #'iexact': dict(),
             'contains': dict(),
-            'icontains': dict(),
+            #'icontains': dict(),
             'in': dict(type_modifier=lambda typ: graphene.List(typ)),
             'gt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'gte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'lt': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'lte': dict(allowed_types=[graphene.Int, graphene.Float, graphene.DateTime, graphene.Date]),
             'startswith': dict(allowed_types=[graphene.String]),
-            'istartswith': dict(allowed_types=[graphene.String]),
+            #'istartswith': dict(allowed_types=[graphene.String]),
             'endswith': dict(allowed_types=[graphene.String]),
-            'iendswith': dict(allowed_types=[graphene.String]),
+            #'iendswith': dict(allowed_types=[graphene.String]),
             # Range expects a 2 item tuple, so give it a list
             'range': dict(type_modifier=lambda typ: graphene.List(typ)),
             'isnull': dict(),
-            'regex': dict(allowed_types=[graphene.String]),
-            'iregex': dict(allowed_types=[graphene.String]),
+            #'regex': dict(allowed_types=[graphene.String]),
+            #'iregex': dict(allowed_types=[graphene.String]),
             'search': dict(allowed_types=[graphene.String]),
 
             # postgres lookups
@@ -113,7 +112,7 @@ FILTER_FIELDS = R.compose(
             'has_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
             'has_any_keys': dict(allowed_types=[graphene.JSONString, graphene.InputObjectType]),
             # groups of 3 characters for similarity recognition
-            'trigram_similar': dict(allowed_types=[graphene.String])
+            #'trigram_similar': dict(allowed_types=[graphene.String])
         }
     )
 )(settings)
@@ -173,7 +172,7 @@ def _memoize(args):
 
 
 @memoize(map_args=_memoize)
-def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_only=False):
+def input_type_class(field_config, crud, parent_type_classes=[], field_only=False):
     """
     An InputObjectType subclass for use as nested query argument types and mutation argument types
     The subclass is dynamically created based on the field_dict_value['graphene_type'] and the crud type.
@@ -184,6 +183,8 @@ def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_
     :param parent_type_classes: String or String array of parent graphene type classes. Unfortunately, Graphene doesn't
     let us reuse input types around the schema, even if they are identical, so we must give them unique names
     based on the parent ancestry
+    :param fields_only Default False. Don't create the inpub class, just return the fields that are created,
+    including filter fields. This is like calling fields_with_filter_fields with a bit of prep
     :return: An InputObjectType subclass
     """
     # Get the Graphene type. This comes from graphene_type if the class containing the field is a Django Model,
@@ -197,7 +198,7 @@ def input_type_class(field_config, crud, parent_type_classes=[], allowed_fields_
         parent_type_classes]
 
     combined_fields = fields_with_filter_fields(fields, graphene_class, modified_parent_type_classes, crud)
-    if allowed_fields_only:
+    if field_only:
         return combined_fields
 
     return type(
@@ -539,8 +540,8 @@ def add_filters(argument_dict):
 
 def top_level_allowed_filter_arguments(fields, graphene_type):
     """
-        For top-level calls, not recursion
-        Like allowed_query_and_read_arguments but only used for arguments and adds filter variables like id_contains.
+        For top-level read calls.
+        Like allowed_filter_arguments but only used for arguments and adds filter variables like id_contains.
         Note that django needs __ so these are converted for resolvers. The graphql interface converts them to
         camel case
     :param fields: The fields for the graphene type
@@ -552,9 +553,7 @@ def top_level_allowed_filter_arguments(fields, graphene_type):
 
 def allowed_filter_arguments(fields_dict, graphene_type):
     """
-        Like allowed_query_and_read_arguments but only used for arguments and adds filter variables like id_contains.
-        Note that django needs __ so these are converted for resolvers. The graphql interface converts them to
-        camel case
+        Used internally by calls started by top_level_allowed_filter_arguments
     :param fields_dict: The fields_dict for the Django model
     :param graphen_type: Type used for embedded input class naming
     :return: dict of field keys and there graphene type, either a primitive or input type
