@@ -630,9 +630,9 @@ def guess_update_or_create(fields_dict):
     return CREATE
 
 
-def instantiate_graphene_type(field_config, parent_type_classes, crud,
-                              fields_only=False,
-                              create_filter_fields_for_search_type=False):
+def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
+                                        fields_only=False,
+                                        create_filter_fields_for_search_type=False):
     """
         Instantiates the Graphene type at value.type. Most of the time the type is a primitive and
         doesn't need to be mapped to an input type. If the type is an ObjectType, we need to dynamically
@@ -708,7 +708,7 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[], fields_only=Fal
     # Don't guess the crud type if create_filter_fields_for_search_type is true. We want it null in that case
     crud = crud or (guess_update_or_create(fields_dict) if not create_filter_fields_for_search_type else crud)
     return R.map_dict(
-        lambda field_config: instantiate_graphene_type(
+        lambda field_config: instantiate_graphene_type_or_fields(
             field_config, parent_type_classes, crud,
             fields_only=fields_only,
             create_filter_fields_for_search_type=create_filter_fields_for_search_type
