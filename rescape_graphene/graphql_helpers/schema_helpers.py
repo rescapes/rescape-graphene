@@ -183,13 +183,15 @@ def _memoize(args):
         # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
         # of a Region or the user of a Group.
         args[2] if R.length(args) > 2 and R.isinstance((list, tuple), args[2]) else [args[2]],
-        # None of the arguments can be allowed to cause duplicate InputType classes. Each class should never be
-        # called with variations
     ]
 
 
-@memoize(map_args=_memoize, map_kwargs=lambda kwargs: '')
-def input_type_class(field_config, crud, parent_type_classes=[], fields_only=False, with_filter_fields=True,
+@memoize(
+    map_args=_memoize,
+    # Only fields_only can vary for the same input class
+    map_kwargs=lambda kwargs: [R.prop_or(False, 'fields_only', kwargs)]
+)
+def input_type_class(field_config, crud, parent_type_classes, fields_only=False, with_filter_fields=True,
                      create_filter_fields_for_search_type=False):
     """
     An InputObjectType subclass for use as nested query argument types and mutation argument types
@@ -217,14 +219,15 @@ def input_type_class(field_config, crud, parent_type_classes=[], fields_only=Fal
     fields = call_if_lambda(field_config['fields'])
 
     # Make it an array if not
-    modified_parent_type_classes = parent_type_classes if R.isinstance((list, tuple), parent_type_classes) else [
-        parent_type_classes]
+    modified_parent_type_classes = to_array_if_not(parent_type_classes)
 
     combined_fields = fields_with_filter_fields(
         fields,
         graphene_class,
         parent_type_classes=modified_parent_type_classes,
         crud=crud,
+        # Only continue with fields_only for search types. Otherwise we need types for the sub fields
+        fields_only=create_filter_fields_for_search_type,
         with_filter_fields=with_filter_fields,
         create_filter_fields_for_search_type=create_filter_fields_for_search_type
     )
@@ -252,7 +255,7 @@ def input_type_class(field_config, crud, parent_type_classes=[], fields_only=Fal
 
 
 def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], crud=None, with_filter_fields=True,
-                                fields_only=False,
+                              fields_only=False,
                               create_filter_fields_for_search_type=False):
     """
         Adds filter fields to the given fields, so that for field name we add nameContains etc.
@@ -297,12 +300,12 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
         crud,
         # Keep our naming unique by appending parent classes, ordered newest to oldest
         R.concat([graphene_class], to_array_if_not(parent_type_classes)),
-        fields_only=fields_only,
+        fields_only=fields_only or create_filter_fields_for_search_type,
         create_filter_fields_for_search_type=create_filter_fields_for_search_type
     )
     # These fields allow us to filter on InputTypes when we use them as query arguments
     # This doesn't apply to Update and Create input types, since we never filter during those operations
-    filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if with_filter_fields and (
+    filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class, fields_only=fields_only) if with_filter_fields and (
             R.equals(READ, crud) or create_filter_fields_for_search_type) else {}
     # Add 'order_by_field' so the call can specify order by values that match django's syntax or similar
     order_by_field = dict(order_by=String())
@@ -493,7 +496,7 @@ def merge_with_django_properties(graphene_type, field_dict):
 
 
 @R.curry
-def resolve_type(graphene_type, field_config):
+def resolve_type(graphene_type, field_config, fields_only=False):
     # If the type is a scalar, just instantiate
     # Otherwise created a related field InputType subclass. In order to query a nested object, it has to
     # be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
@@ -501,7 +504,7 @@ def resolve_type(graphene_type, field_config):
     # https://github.com/graphql-python/graphene/issues/431
     return R.prop('type', field_config)() if \
         inspect.isclass(R.prop('type', field_config)) and issubclass(R.prop('type', field_config), Scalar) else \
-        input_type_class(field_config, READ, graphene_type)()
+        input_type_class(field_config, READ, graphene_type, fields_only=fields_only)()
 
 
 def allowed_read_fields(fields_dict, graphene_type):
@@ -601,16 +604,17 @@ def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields
     )
 
 
-def allowed_filter_arguments(fields_dict, graphene_type):
+def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False):
     """
         Used internally by calls started by top_level_allowed_filter_arguments
     :param fields_dict: The fields_dict for the Django model
     :param graphen_type: Type used for embedded input class naming
+    :param fields_only: Default false, Return fields only not types
     :return: dict of field keys and there graphene type, either a primitive or input type
     """
     return R.compose(
         lambda argument_dict: add_filters(argument_dict),
-        R.map_dict(resolve_type(graphene_type)),
+        R.map_dict(resolve_type(graphene_type, fields_only=fields_only)),
         R.filter_dict(
             # Don't allow DENYed READ fields to be used for querying
             lambda key_value: R.and_func(
@@ -670,6 +674,9 @@ def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
             with_filter_fields=True,
             create_filter_fields_for_search_type=create_filter_fields_for_search_type
         )
+        # If we only want fields we can return now
+        if fields_only:
+            return resolved_graphene_type_or_fields
     elif R.isfunction(graphene_type) and \
             R.compose(R.equals(0), R.length, R.prop('parameters'), inspect.signature)(graphene_type):
         # If out graphene_type is a no arg lambda it means it needs lazy evaluation to avoid circular imports
@@ -680,9 +687,15 @@ def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
             dict(graphene_type=_graphene_type, fields=_fields), crud,
             parent_type_classes, fields_only=fields_only
         )
+        # If we only want fields we can return now
+        if fields_only:
+            return resolved_graphene_type_or_fields
     elif R.isfunction(graphene_type):
         # If a lambda is returned with params we have an InputType subclass that needs to know the crud type
         resolved_graphene_type_or_fields = graphene_type(crud)
+        # If we only want fields we can return now
+        if fields_only:
+            return resolved_graphene_type_or_fields
     else:
         # Otherwise we have a simple type
         resolved_graphene_type_or_fields = graphene_type
