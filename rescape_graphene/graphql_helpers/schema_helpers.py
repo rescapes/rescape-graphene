@@ -252,6 +252,7 @@ def input_type_class(field_config, crud, parent_type_classes=[], fields_only=Fal
 
 
 def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], crud=None, with_filter_fields=True,
+                                fields_only=False,
                               create_filter_fields_for_search_type=False):
     """
         Adds filter fields to the given fields, so that for field name we add nameContains etc.
@@ -264,6 +265,7 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
     :param with_filter_fields Default True. If False don't create filter fields. Only needed for things like
     pagination and version types where we don't want filters on the top level properties like page number, but
     do want it recursively on the objects property
+    :param fields_only If true don't create input type classes when recursing (used by search types)
     :param create_filter_fields_for_search_type Default False, Usually we only add filter fields for READ crud types. This
     overrides that so that Search types can add filters
     :return: The combined fields
@@ -295,6 +297,7 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
         crud,
         # Keep our naming unique by appending parent classes, ordered newest to oldest
         R.concat([graphene_class], to_array_if_not(parent_type_classes)),
+        fields_only=fields_only,
         create_filter_fields_for_search_type=create_filter_fields_for_search_type
     )
     # These fields allow us to filter on InputTypes when we use them as query arguments
