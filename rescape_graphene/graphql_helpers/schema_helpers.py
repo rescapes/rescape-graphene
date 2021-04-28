@@ -89,7 +89,8 @@ FILTER_FIELDS = R.compose(
             'second': dict(allowed_types=[graphene.DateTime]),
 
             # standard lookups
-            'exact': dict(allowed_types=NON_COMPLEX_TYPES),  # this is the default, but keep so we can do negative queries, i.e. exact__not
+            'exact': dict(allowed_types=NON_COMPLEX_TYPES),
+            # this is the default, but keep so we can do negative queries, i.e. exact__not
             # 'iexact': dict(allowed_types=NON_COMPLEX_TYPES),
             # I think anything can have a contains filter, even complex types, because we might want
             # to test if a complex type contains certain javascript
@@ -629,13 +630,16 @@ def guess_update_or_create(fields_dict):
     return CREATE
 
 
-def instantiate_graphene_type(field_config, parent_type_classes, crud, create_filter_fields_for_search_type=False):
+def instantiate_graphene_type(field_config, parent_type_classes, crud,
+                              fields_only=False,
+                              create_filter_fields_for_search_type=False):
     """
         Instantiates the Graphene type at value.type. Most of the time the type is a primitive and
         doesn't need to be mapped to an input type. If the type is an ObjectType, we need to dynamically
         construct an InputObjectType
     :param field_config: Dict containing type and possible crud fields like value['create'] and value['update']
     These optional values indicate if a field is required
+    :param fields_only Only create fields, not the type
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :param crud: READ, WRITE, UPDATE, DELETE or None if create_filter_fields_for_search_type is true
     :param create_filter_fields_for_search_type Default False, Usually we only add filter fields for READ crud types. This
@@ -655,11 +659,11 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud, create_fi
     if inspect.isclass(graphene_type) and issubclass(graphene_type, (ObjectType)):
         # ObjectTypes must be converted to a dynamic InputTypeVersion
         fields = R.prop('fields', field_config)
-        resolved_graphene_type = input_type_class(
+        resolved_graphene_type_or_fields = input_type_class(
             dict(graphene_type=graphene_type, fields=fields),
             crud,
             parent_type_classes,
-            fields_only=False,
+            fields_only=fields_only,
             with_filter_fields=True,
             create_filter_fields_for_search_type=create_filter_fields_for_search_type
         )
@@ -669,41 +673,46 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud, create_fi
         # This is only true for representing reverse relationships on django models
         _graphene_type = graphene_type()
         _fields = R.compose(call_if_lambda, R.prop('fields'))(field_config)
-        resolved_graphene_type = input_type_class(
+        resolved_graphene_type_or_fields = input_type_class(
             dict(graphene_type=_graphene_type, fields=_fields), crud,
-            parent_type_classes
+            parent_type_classes, fields_only=fields_only
         )
     elif R.isfunction(graphene_type):
         # If a lambda is returned with params we have an InputType subclass that needs to know the crud type
-        resolved_graphene_type = graphene_type(crud)
+        resolved_graphene_type_or_fields = graphene_type(crud)
     else:
         # Otherwise we have a simple type
-        resolved_graphene_type = graphene_type
+        resolved_graphene_type_or_fields = graphene_type
 
     # Instantiate using the type_modifier function if we need to wrap this in a List and/or give it a resolver,
     # Otherwise instantiate and pass the required flag
-    return graphene_type_modifier(resolved_graphene_type) if \
+    return graphene_type_modifier(resolved_graphene_type_or_fields) if \
         graphene_type_modifier else \
-        resolved_graphene_type(
+        resolved_graphene_type_or_fields(
             # Add required depending on whether this is an insert or update
             # This means if a user omits these fields an error will occur
             required=R.prop_eq_or_in_or(False, crud, REQUIRE, field_config)
         )
 
 
-def input_type_fields(fields_dict, crud, parent_type_classes=[], create_filter_fields_for_search_type=False):
+def input_type_fields(fields_dict, crud, parent_type_classes=[], fields_only=False,
+                      create_filter_fields_for_search_type=False):
     """
     :param fields_dict: The fields_dict for the Django model or json data
     :param crud: INSERT, UPDATE, or DELETE. If None the type is guessed
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
+    :param fields_only
     :param create_filter_fields_for_search_type: Default false. Only used by Search types to add filter versions of their fields
     :return:
     """
     # Don't guess the crud type if create_filter_fields_for_search_type is true. We want it null in that case
     crud = crud or (guess_update_or_create(fields_dict) if not create_filter_fields_for_search_type else crud)
     return R.map_dict(
-        lambda field_config: instantiate_graphene_type(field_config, parent_type_classes, crud,
-                                                       create_filter_fields_for_search_type),
+        lambda field_config: instantiate_graphene_type(
+            field_config, parent_type_classes, crud,
+            fields_only=fields_only,
+            create_filter_fields_for_search_type=create_filter_fields_for_search_type
+        ),
         # Filter out values that are deny
         # This means that if the user tries to pass these fields to graphql an error will occur
         R.filter_dict(

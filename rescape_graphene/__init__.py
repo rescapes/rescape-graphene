@@ -29,7 +29,7 @@ from .graphql_helpers.schema_helpers import (
     allowed_read_fields,
     allowed_filter_arguments,
     guess_update_or_create,
-    instantiate_graphene_type,
+    instantiate_graphene_type_or_fields,
     input_type_fields,
     input_type_parameters_for_update_or_create,
     graphql_query,
