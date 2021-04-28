@@ -637,7 +637,7 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud, create_fi
     :param field_config: Dict containing type and possible crud fields like value['create'] and value['update']
     These optional values indicate if a field is required
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
-    :param crud:
+    :param crud: READ, WRITE, UPDATE, DELETE or None if create_filter_fields_for_search_type is true
     :param create_filter_fields_for_search_type Default False, Usually we only add filter fields for READ crud types. This
     overrides that so that Search types can add filters
     :return:
@@ -699,7 +699,8 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[], create_filter_f
     :param create_filter_fields_for_search_type: Default false. Only used by Search types to add filter versions of their fields
     :return:
     """
-    crud = crud or guess_update_or_create(fields_dict)
+    # Don't guess the crud type if create_filter_fields_for_search_type is true. We want it null in that case
+    crud = crud or (guess_update_or_create(fields_dict) if not create_filter_fields_for_search_type else crud)
     return R.map_dict(
         lambda field_config: instantiate_graphene_type(field_config, parent_type_classes, crud,
                                                        create_filter_fields_for_search_type),
