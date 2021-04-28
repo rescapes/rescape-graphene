@@ -189,14 +189,14 @@ def _memoize(args):
 
 @memoize(map_args=_memoize, map_kwargs=lambda kwargs: '')
 def input_type_class(field_config, crud, parent_type_classes=[], fields_only=False, with_filter_fields=True,
-                     create_filter_fields_for_mutations=False):
+                     create_filter_fields_for_search_type=False):
     """
     An InputObjectType subclass for use as nested query argument types and mutation argument types
     The subclass is dynamically created based on the field_dict_value['graphene_type'] and the crud type.
     The fields are based on field_dicta_values['fields'] and the underlying Django model of the graphene_type,
-    as well as the rules for the crud type spceified in field_dict_vale.
+    as well as the rules for the crud type spcecified in field_dict_vale.
     :param field_config:
-    :param crud: CREATE, UPDATE, or READ
+    :param crud: CREATE, UPDATE, or READ, or None (for top-level search types with fields_only=True)
     :param parent_type_classes: String or String array of parent graphene type classes. Unfortunately, Graphene doesn't
     let us reuse input types around the schema, even if they are identical, so we must give them unique names
     based on the parent ancestry
@@ -205,7 +205,7 @@ def input_type_class(field_config, crud, parent_type_classes=[], fields_only=Fal
     :param with_filter_fields Default True. If False don't create filter fields. Only needed for things like
     pagination and version types where we don't want filters on the top level properties like page number, but
     do want it recursively on the objects property
-    :param create_filter_fields_for_mutations Default False, Usually we only add filter fields for READ crud types. This
+    :param create_filter_fields_for_search_type Default False, Usually we only add filter fields for READ crud types. This
     overrides that so that Search types can add filters
     :return: An InputObjectType subclass
     """
@@ -225,7 +225,7 @@ def input_type_class(field_config, crud, parent_type_classes=[], fields_only=Fal
         parent_type_classes=modified_parent_type_classes,
         crud=crud,
         with_filter_fields=with_filter_fields,
-        create_filter_fields_for_mutations=create_filter_fields_for_mutations
+        create_filter_fields_for_search_type=create_filter_fields_for_search_type
     )
     if fields_only:
         return combined_fields
@@ -251,7 +251,7 @@ def input_type_class(field_config, crud, parent_type_classes=[], fields_only=Fal
 
 
 def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], crud=None, with_filter_fields=True,
-                              create_filter_fields_for_mutations=False):
+                              create_filter_fields_for_search_type=False):
     """
         Adds filter fields to the given fields, so that for field name we add nameContains etc.
         This is used for search arguments as well as search class instances which can store searches
@@ -263,7 +263,7 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
     :param with_filter_fields Default True. If False don't create filter fields. Only needed for things like
     pagination and version types where we don't want filters on the top level properties like page number, but
     do want it recursively on the objects property
-    :param create_filter_fields_for_mutations Default False, Usually we only add filter fields for READ crud types. This
+    :param create_filter_fields_for_search_type Default False, Usually we only add filter fields for READ crud types. This
     overrides that so that Search types can add filters
     :return: The combined fields
     """
@@ -293,12 +293,13 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
         input_type_field_configs,
         crud,
         # Keep our naming unique by appending parent classes, ordered newest to oldest
-        R.concat([graphene_class], to_array_if_not(parent_type_classes))
+        R.concat([graphene_class], to_array_if_not(parent_type_classes)),
+        create_filter_fields_for_search_type=create_filter_fields_for_search_type
     )
     # These fields allow us to filter on InputTypes when we use them as query arguments
     # This doesn't apply to Update and Create input types, since we never filter during those operations
     filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class) if with_filter_fields and (
-            R.equals(READ, crud) or create_filter_fields_for_mutations) else {}
+            R.equals(READ, crud) or create_filter_fields_for_search_type) else {}
     # Add 'order_by_field' so the call can specify order by values that match django's syntax or similar
     order_by_field = dict(order_by=String())
     combined_fields = R.merge_all([order_by_field, filter_fields, input_fields])
@@ -576,7 +577,7 @@ def add_filters(argument_dict):
 
 
 def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields=True,
-                                       create_filter_fields_for_mutations=False):
+                                       create_filter_fields_for_search_type=False):
     """
         For top-level read calls.
         Like allowed_filter_arguments but only used for arguments and adds filter variables like id_contains.
@@ -592,7 +593,7 @@ def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields
     return input_type_class(
         dict(fields=fields, graphene_type=graphene_type),
         'read', [], fields_only=True, with_filter_fields=with_filter_fields,
-        create_filter_fields_for_mutations=create_filter_fields_for_mutations,
+        create_filter_fields_for_search_type=create_filter_fields_for_search_type,
     )
 
 
@@ -628,7 +629,7 @@ def guess_update_or_create(fields_dict):
     return CREATE
 
 
-def instantiate_graphene_type(field_config, parent_type_classes, crud, create_filter_fields_for_mutations=False):
+def instantiate_graphene_type(field_config, parent_type_classes, crud, create_filter_fields_for_search_type=False):
     """
         Instantiates the Graphene type at value.type. Most of the time the type is a primitive and
         doesn't need to be mapped to an input type. If the type is an ObjectType, we need to dynamically
@@ -637,7 +638,7 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud, create_fi
     These optional values indicate if a field is required
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :param crud:
-    :param create_filter_fields_for_mutations Default False, Usually we only add filter fields for READ crud types. This
+    :param create_filter_fields_for_search_type Default False, Usually we only add filter fields for READ crud types. This
     overrides that so that Search types can add filters
     :return:
     """
@@ -660,7 +661,7 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud, create_fi
             parent_type_classes,
             fields_only=False,
             with_filter_fields=True,
-            create_filter_fields_for_mutations=create_filter_fields_for_mutations
+            create_filter_fields_for_search_type=create_filter_fields_for_search_type
         )
     elif R.isfunction(graphene_type) and \
             R.compose(R.equals(0), R.length, R.prop('parameters'), inspect.signature)(graphene_type):
@@ -690,18 +691,18 @@ def instantiate_graphene_type(field_config, parent_type_classes, crud, create_fi
         )
 
 
-def input_type_fields(fields_dict, crud, parent_type_classes=[], create_filter_fields_for_mutations=False):
+def input_type_fields(fields_dict, crud, parent_type_classes=[], create_filter_fields_for_search_type=False):
     """
     :param fields_dict: The fields_dict for the Django model or json data
     :param crud: INSERT, UPDATE, or DELETE. If None the type is guessed
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
-    :param create_filter_fields_for_mutations: Default false. Only used by Search types to add filter versions of their fields
+    :param create_filter_fields_for_search_type: Default false. Only used by Search types to add filter versions of their fields
     :return:
     """
     crud = crud or guess_update_or_create(fields_dict)
     return R.map_dict(
         lambda field_config: instantiate_graphene_type(field_config, parent_type_classes, crud,
-                                                       create_filter_fields_for_mutations),
+                                                       create_filter_fields_for_search_type),
         # Filter out values that are deny
         # This means that if the user tries to pass these fields to graphql an error will occur
         R.filter_dict(
