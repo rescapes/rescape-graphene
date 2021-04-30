@@ -7,7 +7,6 @@ from decimal import Decimal
 import graphene
 import reversion
 from deepmerge import Merger
-from django.contrib.auth import get_user_model
 from django.contrib.gis.db.models import OneToOneField, ManyToManyField, ForeignKey, \
     GeometryCollectionField
 from django.db.models import JSONField, AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
@@ -227,7 +226,7 @@ def input_type_class(field_config, crud, parent_type_classes, fields_only=False,
         parent_type_classes=modified_parent_type_classes,
         crud=crud,
         # Only continue with fields_only for search types. Otherwise we need types for the sub fields
-        fields_only=create_filter_fields_for_search_type,
+        fields_only=fields_only,
         with_filter_fields=with_filter_fields,
         create_filter_fields_for_search_type=create_filter_fields_for_search_type
     )
@@ -273,6 +272,7 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
     overrides that so that Search types can add filters
     :return: The combined fields
     """
+    _fields_only = fields_only or create_filter_fields_for_search_type
 
     # Gather the field_configs for the type we are creating
     input_type_field_configs = merge_with_django_properties(
@@ -295,22 +295,34 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
             )
         )(fields) if crud in [CREATE, UPDATE] else fields
     ) if django_model_of_graphene_type(graphene_class) else fields
+
+    # These fields allow us to filter on InputTypes when we use them as query arguments
+    # This doesn't apply to Update and Create input types, since we never filter during those operations
+    filter_fields = allowed_filter_arguments(
+        input_type_field_configs,
+        graphene_class,
+        fields_only=_fields_only
+    ) if with_filter_fields and (
+            R.equals(READ, crud) or create_filter_fields_for_search_type
+    ) else {}
+
+    # If fields_only, quit now without creating input fields
+    if _fields_only:
+        return filter_fields
+
+    # Add 'order_by_field' so the call can specify order by values that match django's syntax or similar
+    order_by_field = dict(order_by=String())
+
     input_fields = input_type_fields(
         input_type_field_configs,
         crud,
         # Keep our naming unique by appending parent classes, ordered newest to oldest
         R.concat([graphene_class], to_array_if_not(parent_type_classes)),
-        fields_only=fields_only or create_filter_fields_for_search_type,
+        fields_only=_fields_only,
         create_filter_fields_for_search_type=create_filter_fields_for_search_type
     )
-    # These fields allow us to filter on InputTypes when we use them as query arguments
-    # This doesn't apply to Update and Create input types, since we never filter during those operations
-    filter_fields = allowed_filter_arguments(input_type_field_configs, graphene_class, fields_only=fields_only) if with_filter_fields and (
-            R.equals(READ, crud) or create_filter_fields_for_search_type) else {}
-    # Add 'order_by_field' so the call can specify order by values that match django's syntax or similar
-    order_by_field = dict(order_by=String())
-    combined_fields = R.merge_all([order_by_field, filter_fields, input_fields])
-    return combined_fields
+
+    return R.merge_all([order_by_field, filter_fields, input_fields])
 
 
 def related_input_field(field_dict_value, parent_type_classes, *args, **kwargs):
@@ -502,9 +514,14 @@ def resolve_type(graphene_type, field_config, fields_only=False):
     # be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
     # graphql: users: (name: "Peter", group: {role: "admin"})
     # https://github.com/graphql-python/graphene/issues/431
-    return R.prop('type', field_config)() if \
-        inspect.isclass(R.prop('type', field_config)) and issubclass(R.prop('type', field_config), Scalar) else \
-        input_type_class(field_config, READ, graphene_type, fields_only=fields_only)()
+    # When fields_only=False, meaning we have an input_type_class, instantiate it with ()
+    if inspect.isclass(R.prop('type', field_config)) and issubclass(R.prop('type', field_config), Scalar):
+        # Return the type instantiated
+        return R.prop('type', field_config)() if not fields_only else field_config
+    else:
+        # Resolve with recursion
+        input_type_class_instance = input_type_class(field_config, READ, graphene_type, fields_only=fields_only)
+        return R.when(callable, lambda l: l())(input_type_class_instance)
 
 
 def allowed_read_fields(fields_dict, graphene_type):
@@ -528,34 +545,42 @@ def allowed_read_fields(fields_dict, graphene_type):
     )(fields_dict)
 
 
-def allowed_filter_pairs(field_name, graphene_type):
+def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=False):
     """
         Creates pairs of filter_field, graphene_type such as [id_contains, Int(), id_in, List(Int())] for
         filter fields that are allowed for the field_name's graphene_type
     :param field_name: Field being given filters
-    :param graphene_type: Graphene type of the field
+    :param field_config: Field config
     :return: List of pairs
+
     """
+
+    def filter_field_config_or_type(config):
+        type_modifier = config['type_modifier'] if R.has('type_modifier', config) else lambda t: t()
+        return R.merge(field_config, dict(type_modifier=type_modifier)) if fields_only else (
+            # If a type_modifier is needed for the filter type, such as a List constructor call it
+            # with the field's type as an argument
+            type_modifier(graphene_instance.__class__)
+        )
+
     return R.map_with_obj_to_values(
         # Make all the filter pairs for each key id: id_contains, id: id_in, etc
         lambda filter_str, config: [
             '%s_%s' % (field_name, filter_str),
-            # If a type_modifier is needed for the filter type, such as a List constructor call it
-            # with the field's type as an argument
-            (config['type_modifier'] if R.has('type_modifier', config) else lambda t: t())(graphene_type)
+            filter_field_config_or_type(config)
         ],
         # Only allow filters compliant with the type of pair[1]
         R.filter_dict(
             lambda keyvalue: field_name not in EXCLUDED_PROP_KEYS_FROM_FILTERING and (
                     not R.has('allowed_types', keyvalue[1]) or
-                    R.any_satisfy(lambda typ: issubclass(graphene_type, typ), keyvalue[1]['allowed_types'])
+                    R.any_satisfy(lambda typ: issubclass(graphene_instance.__class__, typ), keyvalue[1]['allowed_types'])
             ),
             FILTER_FIELDS
         )
     )
 
 
-def make_filters(pair):
+def make_filters(field_name, graphene_instance, field_config, fields_only=False):
     """
         Add the needed filters to the standard 'eq' value
         This compensates for django-filter not being implemented to work in graphene without Relay
@@ -564,23 +589,28 @@ def make_filters(pair):
     """
     return R.from_pairs(
         R.concat(
-            [pair],
-            allowed_filter_pairs(pair[0], pair[1].__class__)
+            [[field_name, field_config if fields_only else graphene_instance]],
+            allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=fields_only)
         )
     )
 
 
-def add_filters(argument_dict):
+def add_filters(field_and_instance_and_config, fields_only=False):
     """
         Adds filter arguments to 'eq' arguments.
-    :param argument_dict:
+    :param field_and_instance_and_config: list of dict(field_name, graphene_type, field_config)
     :return: dict of the 'eq' arguments and the filter args e.g. {id: Int(), id_contains: List(Int), ...}
     """
     return R.compose(
         R.merge_all,
-        R.map(make_filters),
-        R.to_pairs
-    )(argument_dict)
+        lambda field_and_instance_and_config: R.map(
+            lambda field_and_type_and_config: make_filters(
+                *R.props(['field_name', 'graphene_instance', 'field_config'], field_and_type_and_config),
+                fields_only=fields_only
+            ),
+            field_and_instance_and_config
+        ),
+    )(field_and_instance_and_config)
 
 
 def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields=True,
@@ -597,11 +627,11 @@ def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields
     do want it recursively on the objects property
     :return: dict of field keys and there graphene type, either a primitive or input type
     """
-    return input_type_class(
+    return type_modify_fields(input_type_class(
         dict(fields=fields, graphene_type=graphene_type),
         'read', [], fields_only=True, with_filter_fields=with_filter_fields,
         create_filter_fields_for_search_type=create_filter_fields_for_search_type,
-    )
+    ))
 
 
 def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False):
@@ -613,14 +643,22 @@ def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False):
     :return: dict of field keys and there graphene type, either a primitive or input type
     """
     return R.compose(
-        lambda argument_dict: add_filters(argument_dict),
-        R.map_dict(resolve_type(graphene_type, fields_only=fields_only)),
-        R.filter_dict(
+        lambda field_and_instance_and_config: add_filters(field_and_instance_and_config, fields_only=fields_only),
+        lambda dct: R.map_with_obj_to_values(
+            lambda field_name, field_config: dict(
+                field_name=field_name,
+                field_config=field_config,
+                graphene_instance=resolve_type(graphene_type, field_config, fields_only=fields_only)
+            ),
+            dct
+        ),
+        lambda dct: R.filter_dict(
             # Don't allow DENYed READ fields to be used for querying
             lambda key_value: R.and_func(
                 True,
                 R.not_func(R.prop_eq_or_in(READ, DENY, key_value[1]))
-            )
+            ),
+            dct
         )
     )(call_if_lambda(fields_dict))
 
@@ -674,9 +712,6 @@ def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
             with_filter_fields=True,
             create_filter_fields_for_search_type=create_filter_fields_for_search_type
         )
-        # If we only want fields we can return now
-        if fields_only:
-            return resolved_graphene_type_or_fields
     elif R.isfunction(graphene_type) and \
             R.compose(R.equals(0), R.length, R.prop('parameters'), inspect.signature)(graphene_type):
         # If out graphene_type is a no arg lambda it means it needs lazy evaluation to avoid circular imports
@@ -687,18 +722,17 @@ def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
             dict(graphene_type=_graphene_type, fields=_fields), crud,
             parent_type_classes, fields_only=fields_only
         )
-        # If we only want fields we can return now
-        if fields_only:
-            return resolved_graphene_type_or_fields
     elif R.isfunction(graphene_type):
         # If a lambda is returned with params we have an InputType subclass that needs to know the crud type
         resolved_graphene_type_or_fields = graphene_type(crud)
-        # If we only want fields we can return now
-        if fields_only:
-            return resolved_graphene_type_or_fields
+
     else:
         # Otherwise we have a simple type
         resolved_graphene_type_or_fields = graphene_type
+
+    # If we only want fields we can return now
+    if fields_only:
+        return resolved_graphene_type_or_fields
 
     # Instantiate using the type_modifier function if we need to wrap this in a List and/or give it a resolver,
     # Otherwise instantiate and pass the required flag
@@ -1347,4 +1381,59 @@ def query_sequentially(manager, manager_method, q_expressions_sets):
         ),
         manager,
         q_expressions_sets
+    )
+
+
+def apply_type(v):
+    # What filter arguments are allowed for this field type. Get them here
+    allowed_arguments = allowed_filter_arguments(R.prop('fields', v), R.prop('graphene_type', v)) if \
+        R.has('fields', v) else None
+
+    # If we have allowed arguments make args a 2 element array. The first element is always the graphene type to
+    # construct
+    args = [R.prop('type', v)] + ([allowed_arguments] if allowed_arguments else [])
+    t = R.prop_or(lambda typ: typ(), 'type_modifier', v)
+    return t(*args)
+
+
+def type_modify_fields(data_field_configs):
+    """
+        Converts json field configs based on if they have a type_modifier property. The type_modifier property
+        allows us to make the type defined at graphene_type to be a Field or a List, depending on what we need
+    :param data_field_configs: List of field configs that each might have type_modifier. Exmample:
+    [
+        # This is a field that points to a Django type User, so it resolves to Field(UserType)
+        # with a resolver that handles Django models
+        friend=dict(
+            type=UserType,
+            graphene_type=UserType,
+            fields=merge_with_django_properties(UserType, dict(id=dict(create=REQUIRE))),
+            type_modifier=lambda *type_and_args: Field(*type_and_args, resolver=model_resolver_for_dict_field(get_user_model()))
+        ),
+        # This is a field that points to a json dict modeled in graphene with ViewportDataType, so it
+        resolves to Field(UserRegionDataType) with a resolver that handles a dict
+        viewport=dict(
+            type=ViewportDataType,
+            graphene_type=ViewportDataType,
+            fields=viewport_data_fields,
+            type_modifier=lambda *type_and_args: Field(*type_and_args, resolver=resolver_for_dict_field),
+        )
+        # This is a field that points to a json list of dicts, each modeled in graphene with UserRegionDataType, so it
+        resolves to List(UserRegionDataType) with a resolver that handles lists of dicts
+        user_regions=dict(
+            type=UserRegionDataType,
+            graphene_type=UserRegionDataType,
+            fields=user_region_data_fields,
+            type_modifier=lambda typ: List(typ, resolver=resolver_for_dict_list)
+        )
+    ]
+    :return: A list of Graphene Fields, created by mapping the field_configs. If the field_config has
+    a type_modifier then it is called with field_config['type'] and its result is returned. Otherwise
+    we simply call field_config['type']() to construct an instance of the type
+    """
+    return R.map_with_obj(
+        # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
+        # This all translates to Graphene.Field|List(type, [fields that can be queried])
+        lambda k, v: apply_type(v),
+        data_field_configs
     )

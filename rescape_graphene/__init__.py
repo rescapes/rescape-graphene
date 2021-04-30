@@ -11,7 +11,6 @@ from .django_helpers.write_helpers import (
 )
 from .graphql_helpers.json_field_helpers import (
     resolver_for_feature_collection,
-    type_modify_fields,
     pick_selections,
     resolve_selections,
     model_resolver_for_dict_field,
@@ -40,6 +39,7 @@ from .graphql_helpers.schema_helpers import (
     invert_q_expressions_sets,
     process_filter_kwargs_with_to_manys,
     query_sequentially,
+    type_modify_fields,
     DENY,
     CREATE,
     UPDATE,

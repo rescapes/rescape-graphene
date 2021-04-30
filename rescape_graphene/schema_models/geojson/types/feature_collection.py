@@ -5,7 +5,8 @@ from graphql.language import ast
 from rescape_python_helpers import ramda as R
 from rescape_python_helpers import geometrycollection_from_feature_collection
 
-from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_list, type_modify_fields
+from rescape_graphene.graphql_helpers.json_field_helpers import resolver_for_dict_list
+from rescape_graphene.graphql_helpers.schema_helpers import type_modify_fields
 from rescape_graphene.schema_models.geojson.types.geojson_data_schema import FeatureDataType, feature_data_type_fields
 
 __all__ = [

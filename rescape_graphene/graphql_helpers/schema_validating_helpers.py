@@ -5,6 +5,7 @@ from rescape_python_helpers.functional.ramda import pick_deep
 import re
 
 from rescape_graphene.graphql_helpers.schema_helpers import process_filter_kwargs
+from graphql import format_error
 
 
 def quiz_model_query(client, model_query_function, result_name, variables, expect_length=1):
