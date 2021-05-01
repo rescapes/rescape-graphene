@@ -12,7 +12,7 @@ from django.contrib.gis.db.models import OneToOneField, ManyToManyField, Foreign
 from django.db.models import JSONField, AutoField, CharField, BooleanField, BigAutoField, DecimalField, \
     DateTimeField, DateField, BinaryField, TimeField, FloatField, EmailField, UUIDField, TextField, IntegerField, \
     BigIntegerField, NullBooleanField, Q
-from graphene import Scalar, InputObjectType, ObjectType, String
+from graphene import Scalar, InputObjectType, ObjectType, String, Field
 from graphql import parse
 from graphql.language import ast
 from graphql.language.printer import print_ast
@@ -22,6 +22,7 @@ from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct_un
     to_array_if_not
 
 from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda
+
 
 logger = logging.getLogger('rescape_graphene')
 from django.conf import settings
@@ -226,7 +227,7 @@ def input_type_class(field_config, crud, parent_type_classes, fields_only=False,
         parent_type_classes=modified_parent_type_classes,
         crud=crud,
         # Only continue with fields_only for search types. Otherwise we need types for the sub fields
-        fields_only=fields_only,
+        fields_only=create_filter_fields_for_search_type,
         with_filter_fields=with_filter_fields,
         create_filter_fields_for_search_type=create_filter_fields_for_search_type
     )
@@ -556,7 +557,8 @@ def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_onl
     """
 
     def filter_field_config_or_type(config):
-        type_modifier = config['type_modifier'] if R.has('type_modifier', config) else lambda t: t()
+        type_modifier = config['type_modifier'] if R.has('type_modifier', config) else lambda *type_and_args: \
+        type_and_args[0]()
         return R.merge(field_config, dict(type_modifier=type_modifier)) if fields_only else (
             # If a type_modifier is needed for the filter type, such as a List constructor call it
             # with the field's type as an argument
@@ -573,7 +575,8 @@ def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_onl
         R.filter_dict(
             lambda keyvalue: field_name not in EXCLUDED_PROP_KEYS_FROM_FILTERING and (
                     not R.has('allowed_types', keyvalue[1]) or
-                    R.any_satisfy(lambda typ: issubclass(graphene_instance.__class__, typ), keyvalue[1]['allowed_types'])
+                    R.any_satisfy(lambda typ: issubclass(graphene_instance.__class__, typ),
+                                  keyvalue[1]['allowed_types'])
             ),
             FILTER_FIELDS
         )
@@ -627,11 +630,11 @@ def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields
     do want it recursively on the objects property
     :return: dict of field keys and there graphene type, either a primitive or input type
     """
-    return type_modify_fields(input_type_class(
+    return input_type_class(
         dict(fields=fields, graphene_type=graphene_type),
         'read', [], fields_only=True, with_filter_fields=with_filter_fields,
         create_filter_fields_for_search_type=create_filter_fields_for_search_type,
-    ))
+    )
 
 
 def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False):
@@ -676,6 +679,7 @@ def guess_update_or_create(fields_dict):
 
 
 def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
+                                        field_name,
                                         fields_only=False,
                                         create_filter_fields_for_search_type=False):
     """
@@ -687,6 +691,7 @@ def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
     :param fields_only Only create fields, not the type
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :param crud: READ, WRITE, UPDATE, DELETE or None if create_filter_fields_for_search_type is true
+    :param field_name The field name, just for debugging
     :param create_filter_fields_for_search_type Default False, Usually we only add filter fields for READ crud types. This
     overrides that so that Search types can add filters
     :return:
@@ -757,9 +762,10 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[], fields_only=Fal
     """
     # Don't guess the crud type if create_filter_fields_for_search_type is true. We want it null in that case
     crud = crud or (guess_update_or_create(fields_dict) if not create_filter_fields_for_search_type else crud)
-    return R.map_dict(
-        lambda field_config: instantiate_graphene_type_or_fields(
-            field_config, parent_type_classes, crud,
+    return R.map_with_obj(
+        lambda field_name, field_config: instantiate_graphene_type_or_fields(
+            # field_name is just passed for debugging
+            field_config, parent_type_classes, crud, field_name,
             fields_only=fields_only,
             create_filter_fields_for_search_type=create_filter_fields_for_search_type
         ),
@@ -1392,7 +1398,21 @@ def apply_type(v):
     # If we have allowed arguments make args a 2 element array. The first element is always the graphene type to
     # construct
     args = [R.prop('type', v)] + ([allowed_arguments] if allowed_arguments else [])
-    t = R.prop_or(lambda typ: typ(), 'type_modifier', v)
+
+    def x(typ, allowed_args):
+        # TODO there seems to be a case where using v['type'] on fields of DjangoTypes doesn't make sense.
+        # v['type'] is actually an input type, so it doesn't make sense for top-level declarations.
+        # In this case just construct the graphene type with allow args
+        return Field(v['graphene_type'], allowed_args)
+    def y(typ):
+        return typ()
+
+    t = R.prop_or(
+        x if R.length(args) == 2 else y,
+        'type_modifier',
+        v
+    )
+
     return t(*args)
 
 
