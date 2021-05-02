@@ -99,7 +99,9 @@ def model_resolver_for_dict_field(model_class):
     from rescape_graphene.graphql_helpers.schema_helpers import flatten_query_kwargs
 
     def _model_resolver_for_dict_field(resource, context, **kwargs):
-        field_name = underscore(context.field_name)
+        # Don't underscore the field_name. field_name points at a Django model, but the object holding field name
+        # is by definition json, or we wouldn't be using this resolver
+        field_name = context.field_name
         id = R.prop_or(None, 'id', getattr(resource, field_name))
         # If no instance id is assigned to this data, we can't resolve it
         if not id:
