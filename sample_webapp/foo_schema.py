@@ -8,12 +8,13 @@ from rescape_python_helpers.geospatial.geometry_helpers import ewkt_from_feature
 
 from rescape_graphene import increment_prop_until_unique, enforce_unique_props
 from rescape_graphene.graphql_helpers.json_field_helpers import model_resolver_for_dict_field, \
-    type_modify_fields, resolver_for_feature_collection, resolver_for_dict_field
+    resolver_for_feature_collection, resolver_for_dict_field
 from rescape_graphene.graphql_helpers.schema_helpers import REQUIRE, \
     merge_with_django_properties, guess_update_or_create, \
     CREATE, UPDATE, input_type_parameters_for_update_or_create, graphql_update_or_create, graphql_query, \
     input_type_fields, DENY, IGNORE, top_level_allowed_filter_arguments, allowed_filter_arguments, \
-    update_or_create_with_revision, process_filter_kwargs, process_filter_kwargs_with_to_manys, query_sequentially
+    update_or_create_with_revision, process_filter_kwargs, process_filter_kwargs_with_to_manys, query_sequentially, \
+    type_modify_fields
 from rescape_graphene.schema_models.geojson.types.feature_collection import FeatureCollectionDataType, \
     feature_collection_data_type_fields
 from rescape_graphene.schema_models.user_schema import UserType, user_fields
