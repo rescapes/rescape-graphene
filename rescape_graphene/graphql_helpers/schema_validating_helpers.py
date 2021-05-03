@@ -19,7 +19,7 @@ def quiz_model_query(client, model_query_function, result_name, variables, expec
     :return: returns the result for further assertions
     """
     all_result = model_query_function(client)
-    assert not R.has('errors', all_result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', all_result))))
+    assert not R.has('errors', all_result), R.dump_json(R.map(lambda e: format_error(e), R.prop('errors', all_result)))
     result = model_query_function(
         client,
         variables=variables
@@ -196,7 +196,7 @@ def quiz_model_mutation_update(client, graphql_update_or_create_function, create
     :return:
     """
     result = graphql_update_or_create_function(client, values=values)
-    assert not R.has('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.dump_json(R.prop('errors', result))))
+    assert not R.has('errors', result), R.dump_json(R.map(lambda e: format_error(e), R.prop('errors', result)))
     # Extract the result and map the graphql keys to match the python keys
     created = R.compose(
         lambda r: R.map_keys(lambda key: underscore(key), r),

@@ -21,8 +21,7 @@ from rescape_python_helpers import ramda as R, memoize
 from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct_until, \
     to_array_if_not
 
-from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda
-
+from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda, resolve_field_type
 
 logger = logging.getLogger('rescape_graphene')
 from django.conf import settings
@@ -507,18 +506,33 @@ def merge_with_django_properties(graphene_type, field_dict):
             parse_django_class(django_model_of_graphene_type(graphene_type), field_dict, graphene_type))
     )
 
-
 @R.curry
 def resolve_type(graphene_type, field_config, fields_only=False):
-    # If the type is a scalar, just instantiate
-    # Otherwise created a related field InputType subclass. In order to query a nested object, it has to
-    # be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
-    # graphql: users: (name: "Peter", group: {role: "admin"})
-    # https://github.com/graphql-python/graphene/issues/431
-    # When fields_only=False, meaning we have an input_type_class, instantiate it with ()
-    if inspect.isclass(R.prop('type', field_config)) and issubclass(R.prop('type', field_config), Scalar):
+    """
+     Resolves the field type, instantiating scalars and recursing on input types (complex types)
+     If fields_only is true (default Fasle), just return the field_config for scalars without instantiating
+     and for complex types pass fields_only to the recursion
+     If the type is a scalar, just instantiate
+     Otherwise created a related field InputType subclass. In order to query a nested object, it has to
+     be an input field. Example: If A User has a Group, we can query for users named 'Peter' who are admins:
+     graphql: users: (name: "Peter", group: {role: "admin"})
+     https://github.com/graphql-python/graphene/issues/431
+     When fields_only=False, meaning we have an input_type_class, instantiate it with ()
+
+    :param graphene_type: The graphene type of the class containing the field_config. Used only for naming
+    the parent class in recursion
+    :param field_config: Contains either type (coming from a Django model type definition) or graphene type
+    (coming from a non-Django model type definition). This is the type that is optionally instnatiated or
+    recursed upon
+    :param fields_only: Default False, only get the field config for scalars and recurse with this flag for
+    complex types
+    :return: The input type of the field config or the one of those as the result of recursion
+    """
+
+    field_type = resolve_field_type(field_config)
+    if inspect.isclass(field_type) and issubclass(field_type, Scalar):
         # Return the type instantiated
-        return R.prop('type', field_config)() if not fields_only else field_config
+        return field_type() if not fields_only else field_config
     else:
         # Resolve with recursion
         input_type_class_instance = input_type_class(field_config, READ, graphene_type, fields_only=fields_only)
@@ -558,7 +572,7 @@ def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_onl
 
     def filter_field_config_or_type(config):
         type_modifier = config['type_modifier'] if R.has('type_modifier', config) else lambda *type_and_args: \
-        type_and_args[0]()
+            type_and_args[0]()
         return R.merge(field_config, dict(type_modifier=type_modifier)) if fields_only else (
             # If a type_modifier is needed for the filter type, such as a List constructor call it
             # with the field's type as an argument
@@ -1404,6 +1418,7 @@ def apply_type(v):
         # v['type'] is actually an input type, so it doesn't make sense for top-level declarations.
         # In this case just construct the graphene type with allow args
         return Field(v['graphene_type'], allowed_args)
+
     def y(typ):
         return typ()
 

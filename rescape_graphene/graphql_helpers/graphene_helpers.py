@@ -62,7 +62,7 @@ def dump_graphene_type(key, value):
     :return:
     """
 
-    typ = R.prop('type', value)
+    typ = resolve_field_type(value)
     return handleGrapheneTypes(key, value) if \
         R.isfunction(typ) or (inspect.isclass(typ) and issubclass(typ, (ObjectType))) else \
         camelize(key, False)
@@ -185,4 +185,13 @@ def quote_list(lst, tab):
 
 def quote_str(str):
     return '"{0}"'.format(str)
+
+
+
+@R.curry
+def resolve_field_type(field_config):
+    field_type = R.prop_or(R.prop_or(None, 'graphene_type', field_config), 'type', field_config)
+    if not field_type:
+        raise Exception(f'field_config {json.dumps(field_config)} lacks a type or graphene_type')
+    return field_type
 
