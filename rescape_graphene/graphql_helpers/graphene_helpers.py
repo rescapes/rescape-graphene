@@ -3,6 +3,7 @@ from graphene import ObjectType, Scalar
 import inspect
 from rescape_python_helpers import ramda as R, map_keys_deep
 import numbers
+import json
 
 def call_if_lambda(maybe_lambda):
     """
@@ -90,7 +91,9 @@ def dump_graphql_data_object(dct):
     :return:
     """
 
-    if isinstance(dct, dict):
+    if dct == None:
+        return 'null'
+    elif isinstance(dct, dict):
         return '{%s}' % R.join(
             ', ',
             R.map(

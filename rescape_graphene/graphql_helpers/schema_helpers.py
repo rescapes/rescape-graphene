@@ -21,7 +21,8 @@ from rescape_python_helpers import ramda as R, memoize
 from rescape_python_helpers.functional.ramda import to_dict_deep, flatten_dct_until, \
     to_array_if_not
 
-from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda, resolve_field_type
+from .graphene_helpers import dump_graphql_keys, dump_graphql_data_object, camelize_graphql_data_object, call_if_lambda, \
+    resolve_field_type
 
 logger = logging.getLogger('rescape_graphene')
 from django.conf import settings
@@ -421,8 +422,8 @@ def process_field(field_to_unique_field_groups, field, field_dict_value, parent_
     :return: A dict with the unique property and anything else we need
     """
     unique = R.compact([
-        PRIMARY if R.has('primary_key', field) else None,
-        UNIQUE if R.has('unique', field) else None,
+        PRIMARY if R.prop_or(False, 'primary_key', field) else None,
+        UNIQUE if R.prop_or(False, 'unique', field) else None,
         R.prop_or(None, R.has('attname', field), field_to_unique_field_groups)
     ])
     # Normally the field_dict_value will delegate the type to the underlying Django model
@@ -505,6 +506,7 @@ def merge_with_django_properties(graphene_type, field_dict):
             R.keys(field_dict),
             parse_django_class(django_model_of_graphene_type(graphene_type), field_dict, graphene_type))
     )
+
 
 @R.curry
 def resolve_type(graphene_type, field_config, fields_only=False):
@@ -1244,7 +1246,21 @@ def update_or_create_with_revision(model_class, update_or_create_values):
 
     # Declare a revision block.
     with reversion.create_revision():
-        return model_class.objects.update_or_create(**update_or_create_values)
+        if not R.prop_or(
+                False,
+                'id',
+                update_or_create_values
+        ) and not R.prop_or(
+            False,
+            'defaults',
+            update_or_create_values):
+            # If there is no id and no defaults, we have to do a straight save.
+            # update_or_create could match multiple existing instances
+            instance = model_class(**update_or_create_values)
+            instance.save()
+            return instance, True
+        else:
+            return model_class.objects.update_or_create(**update_or_create_values)
 
 
 def deep_merge_existing_json(django_model, json_prop, data):
