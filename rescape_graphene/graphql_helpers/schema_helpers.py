@@ -320,6 +320,7 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
         # Keep our naming unique by appending parent classes, ordered newest to oldest
         R.concat([graphene_class], to_array_if_not(parent_type_classes)),
         fields_only=_fields_only,
+        with_filter_fields=with_filter_fields,
         create_filter_fields_for_search_type=create_filter_fields_for_search_type
     )
 
@@ -697,6 +698,7 @@ def guess_update_or_create(fields_dict):
 def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
                                         field_name,
                                         fields_only=False,
+                                        with_filter_fields=True,
                                         create_filter_fields_for_search_type=False):
     """
         Instantiates the Graphene type at value.type. Most of the time the type is a primitive and
@@ -730,7 +732,7 @@ def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
             crud,
             parent_type_classes,
             fields_only=fields_only,
-            with_filter_fields=True,
+            with_filter_fields=with_filter_fields,
             create_filter_fields_for_search_type=create_filter_fields_for_search_type
         )
     elif R.isfunction(graphene_type) and \
@@ -767,12 +769,15 @@ def instantiate_graphene_type_or_fields(field_config, parent_type_classes, crud,
 
 
 def input_type_fields(fields_dict, crud, parent_type_classes=[], fields_only=False,
+                      with_filter_fields=True,
                       create_filter_fields_for_search_type=False):
     """
     :param fields_dict: The fields_dict for the Django model or json data
     :param crud: INSERT, UPDATE, or DELETE. If None the type is guessed
     :param parent_type_classes: String array of parent graphene types for dynamic class naming
     :param fields_only
+    :param with_filter_fields Default True, indicates to add filter fields for queries. create_filter_fields_for_search_type
+    is used only for SearchTypes that have filter fields as type fields
     :param create_filter_fields_for_search_type: Default false. Only used by Search types to add filter versions of their fields
     :return:
     """
@@ -783,7 +788,8 @@ def input_type_fields(fields_dict, crud, parent_type_classes=[], fields_only=Fal
             # field_name is just passed for debugging
             field_config, parent_type_classes, crud, field_name,
             fields_only=fields_only,
-            create_filter_fields_for_search_type=create_filter_fields_for_search_type
+            with_filter_fields=with_filter_fields,
+            create_filter_fields_for_search_type=create_filter_fields_for_search_type,
         ),
         # Filter out values that are deny
         # This means that if the user tries to pass these fields to graphql an error will occur
