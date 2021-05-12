@@ -102,7 +102,13 @@ def model_resolver_for_dict_field(model_class):
         # Don't underscore the field_name. field_name points at a Django model, but the object holding field name
         # is by definition json, or we wouldn't be using this resolver
         field_name = context.field_name
-        id = R.prop_or(None, 'id', getattr(resource, field_name))
+        try:
+            # resource is either a DataTuple or dict, not sure why
+            id = R.prop_or(None, 'id', R.prop_or(dict(), field_name, resource) if\
+                isinstance(resource, dict) else\
+                getattr(resource, field_name))
+        except Exception as e:
+            raise e
         # If no instance id is assigned to this data, we can't resolve it
         if not id:
             return None
@@ -115,8 +121,12 @@ def model_resolver_for_dict_field(model_class):
                 id=id
             )
         ), None)
+
+        def no_instance_error(_):
+            raise Exception(f'For model {model_class.__name__} and id {id}, no instances were found, either deleted or not')
+
         # If we didn't find the instances search for delete instances if safedelete is implemented
-        return found or (issubclass(model_class, SafeDeleteModel) and first(model_class.objects.all(force_visibility=True).filter(
+        return found or (issubclass(model_class, SafeDeleteModel) and R.if_else(lambda q: q.count(), first, no_instance_error)(model_class.objects.all(force_visibility=True).filter(
             **dict(
                 # These are Q expressions
                 *flatten_query_kwargs(model_class, kwargs),

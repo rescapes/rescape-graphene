@@ -895,7 +895,12 @@ def graphql_query(graphene_type, fields, query_name):
     The only key allowed is variables, which contains param key values. Example: variables={'user': 'Peter'}
     This results in query whatever(id: String!) { query_name(id: id) ... }
     """
-    field_type_lookup = top_level_allowed_filter_arguments(fields, graphene_type)
+
+    # If we already have a search class, it has filters as fields, so don't add them here
+    field_type_lookup = top_level_allowed_filter_arguments(fields, graphene_type) if\
+        'Search' not in graphene_type.__name__ else\
+        type_modify_fields(fields)
+
 
     def form_query(client, field_overrides={}, **kwargs):
         """
@@ -1427,7 +1432,11 @@ def apply_type(v):
 
     # If we have allowed arguments make args a 2 element array. The first element is always the graphene type to
     # construct
-    args = [R.prop('type', v)] + ([allowed_arguments] if allowed_arguments else [])
+    args = [R.if_else(
+        R.has('type'),
+        R.prop('type'),
+        R.prop('graphene_type')
+    )(v)] + ([allowed_arguments] if allowed_arguments else [])
 
     def x(typ, allowed_args):
         # TODO there seems to be a case where using v['type'] on fields of DjangoTypes doesn't make sense.
