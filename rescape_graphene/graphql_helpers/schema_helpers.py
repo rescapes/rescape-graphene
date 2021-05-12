@@ -903,9 +903,11 @@ def graphql_query(graphene_type, fields, query_name):
     """
 
     # If we already have a search class, it has filters as fields, so don't add them here
-    field_type_lookup = top_level_allowed_filter_arguments(fields, graphene_type) if\
-        'Search' not in graphene_type.__name__ else\
-        type_modify_fields(fields)
+    field_type_lookup = top_level_allowed_filter_arguments(
+        fields,
+        graphene_type,
+        with_filter_fields='Search' not in graphene_type.__name__
+    )
 
 
     def form_query(client, field_overrides={}, **kwargs):
