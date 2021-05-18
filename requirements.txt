@@ -1,4 +1,4 @@
-Django==3.2
+Django==3.2.3
 django-filter==2.4.0
 pyramda==0.1
 graphene==2.1.8
@@ -18,12 +18,12 @@ wheel==0.36.2
 twine==3.4.1
 utils==1.0.1
 simplejson==3.17.2
-rescape-python-helpers==0.0.41
-pytest==6.2.3
-pytest-cov==2.11.1
-pytest-django==4.2.0
+rescape-python-helpers==0.0.42
+pytest==6.2.4
+pytest-cov==2.12.0
+pytest-django==4.3.0
 django-reversion==3.0.9
 django-reversion-compare==0.14.0
-numpy==1.20.2
+numpy==1.20.3
 django-safedelete==1.0.0
-pur==5.4.0
+pur==5.4.1

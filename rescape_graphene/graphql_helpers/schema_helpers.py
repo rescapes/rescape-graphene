@@ -208,6 +208,7 @@ def input_type_class(field_config, crud, parent_type_classes, fields_only=False,
     :param with_filter_fields Default True. If False don't create filter fields. Only needed for things like
     pagination and version types where we don't want filters on the top level properties like page number, but
     do want it recursively on the objects property
+    You can also use and array of field names here to just add filter fields at the top level for those fields
     :param create_filter_fields_for_search_type Default False, Usually we only add filter fields for READ crud types. This
     overrides that so that Search types can add filters
     :return: An InputObjectType subclass
@@ -268,6 +269,7 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
     :param with_filter_fields Default True. If False don't create filter fields. Only needed for things like
     pagination and version types where we don't want filters on the top level properties like page number, but
     do want it recursively on the objects property
+    You can also use and array of field names here to just add filter fields at the top level for those fields
     :param fields_only If true don't create input type classes when recursing (used by search types)
     :param create_filter_fields_for_search_type Default False, Usually we only add filter fields for READ crud types. This
     overrides that so that Search types can add filters
@@ -300,7 +302,8 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
     # These fields allow us to filter on InputTypes when we use them as query arguments
     # This doesn't apply to Update and Create input types, since we never filter during those operations
     filter_fields = allowed_filter_arguments(
-        input_type_field_configs,
+        # If with_filter_fields is an array of field names only allow those field names through
+        R.filter_dict(lambda kv: kv[0] in with_filter_fields if isinstance(with_filter_fields, list) else True, input_type_field_configs),
         graphene_class,
         fields_only=_fields_only
     ) if with_filter_fields and (
@@ -510,7 +513,7 @@ def merge_with_django_properties(graphene_type, field_dict):
 
 
 @R.curry
-def resolve_type(graphene_type, field_config, fields_only=False):
+def resolve_type(graphene_type, field_config, fields_only=False, with_filter_fields=True):
     """
      Resolves the field type, instantiating scalars and recursing on input types (complex types)
      If fields_only is true (default Fasle), just return the field_config for scalars without instantiating
@@ -538,7 +541,8 @@ def resolve_type(graphene_type, field_config, fields_only=False):
         return field_type() if not fields_only else field_config
     else:
         # Resolve with recursion
-        input_type_class_instance = input_type_class(field_config, READ, graphene_type, fields_only=fields_only)
+        input_type_class_instance = input_type_class(field_config, READ, graphene_type, fields_only=fields_only,
+                                                     with_filter_fields=with_filter_fields)
         return R.when(callable, lambda l: l())(input_type_class_instance)
 
 
@@ -563,7 +567,7 @@ def allowed_read_fields(fields_dict, graphene_type):
     )(fields_dict)
 
 
-def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=False):
+def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=False, with_filter_fields=True):
     """
         Creates pairs of filter_field, graphene_type such as [id_contains, Int(), id_in, List(Int())] for
         filter fields that are allowed for the field_name's graphene_type
@@ -595,12 +599,12 @@ def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_onl
                     R.any_satisfy(lambda typ: issubclass(graphene_instance.__class__, typ),
                                   keyvalue[1]['allowed_types'])
             ),
-            FILTER_FIELDS
+            FILTER_FIELDS if with_filter_fields else dict()
         )
     )
 
 
-def make_filters(field_name, graphene_instance, field_config, fields_only=False):
+def make_filters(field_name, graphene_instance, field_config, fields_only=False, with_filter_fields=True):
     """
         Add the needed filters to the standard 'eq' value
         This compensates for django-filter not being implemented to work in graphene without Relay
@@ -610,12 +614,13 @@ def make_filters(field_name, graphene_instance, field_config, fields_only=False)
     return R.from_pairs(
         R.concat(
             [[field_name, field_config if fields_only else graphene_instance]],
-            allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=fields_only)
+            allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=fields_only,
+                                 with_filter_fields=with_filter_fields)
         )
     )
 
 
-def add_filters(field_and_instance_and_config, fields_only=False):
+def add_filters(field_and_instance_and_config, fields_only=False, with_filter_fields=True):
     """
         Adds filter arguments to 'eq' arguments.
     :param field_and_instance_and_config: list of dict(field_name, graphene_type, field_config)
@@ -626,7 +631,8 @@ def add_filters(field_and_instance_and_config, fields_only=False):
         lambda field_and_instance_and_config: R.map(
             lambda field_and_type_and_config: make_filters(
                 *R.props(['field_name', 'graphene_instance', 'field_config'], field_and_type_and_config),
-                fields_only=fields_only
+                fields_only=fields_only,
+                with_filter_fields=with_filter_fields
             ),
             field_and_instance_and_config
         ),
@@ -645,6 +651,7 @@ def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields
     :param with_filter_fields Default True. If False don't create filter fields. Only needed for things like
     pagination and version types where we don't want filters on the top level properties like page number, but
     do want it recursively on the objects property
+    You can also use and array of field names here to just add filter fields at the top level for those fields
     :return: dict of field keys and there graphene type, either a primitive or input type
     """
     return input_type_class(
@@ -654,7 +661,7 @@ def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields
     )
 
 
-def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False):
+def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False, with_filter_fields=True):
     """
         Used internally by calls started by top_level_allowed_filter_arguments
     :param fields_dict: The fields_dict for the Django model
@@ -662,14 +669,23 @@ def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False):
     :param fields_only: Default false, Return fields only not types
     :return: dict of field keys and there graphene type, either a primitive or input type
     """
+
+    def _x(field_name, field_config):
+        return dict(
+            field_name=field_name,
+            field_config=field_config,
+            graphene_instance=resolve_type(graphene_type, field_config, fields_only=fields_only,
+                                           with_filter_fields=with_filter_fields)
+        )
+
+    def _y(field_and_instance_and_config):
+        return add_filters(field_and_instance_and_config, fields_only=fields_only,
+                    with_filter_fields=with_filter_fields)
+
     return R.compose(
-        lambda field_and_instance_and_config: add_filters(field_and_instance_and_config, fields_only=fields_only),
+        _y,
         lambda dct: R.map_with_obj_to_values(
-            lambda field_name, field_config: dict(
-                field_name=field_name,
-                field_config=field_config,
-                graphene_instance=resolve_type(graphene_type, field_config, fields_only=fields_only)
-            ),
+            _x,
             dct
         ),
         lambda dct: R.filter_dict(
@@ -908,7 +924,6 @@ def graphql_query(graphene_type, fields, query_name):
         graphene_type,
         with_filter_fields='Search' not in graphene_type.__name__
     )
-
 
     def form_query(client, field_overrides={}, **kwargs):
         """
@@ -1433,9 +1448,10 @@ def query_sequentially(manager, manager_method, q_expressions_sets):
     )
 
 
-def apply_type(v):
+def apply_type(v, with_filter_fields=True):
     # What filter arguments are allowed for this field type. Get them here
-    allowed_arguments = allowed_filter_arguments(R.prop('fields', v), R.prop('graphene_type', v)) if \
+    allowed_arguments = allowed_filter_arguments(R.prop('fields', v), R.prop('graphene_type', v),
+                                                 with_filter_fields=with_filter_fields) if \
         R.has('fields', v) else None
 
     # If we have allowed arguments make args a 2 element array. The first element is always the graphene type to
@@ -1450,7 +1466,7 @@ def apply_type(v):
         # TODO there seems to be a case where using v['type'] on fields of DjangoTypes doesn't make sense.
         # v['type'] is actually an input type, so it doesn't make sense for top-level declarations.
         # In this case just construct the graphene type with allow args
-        return Field(v['graphene_type'], allowed_args)
+        return Field(R.prop_or(R.prop_or(None, 'graphen_type', v), 'type', v), allowed_args)
 
     def y(typ):
         return typ()
@@ -1464,7 +1480,7 @@ def apply_type(v):
     return t(*args)
 
 
-def type_modify_fields(data_field_configs):
+def type_modify_fields(data_field_configs, with_filter_fields=True):
     """
         Converts json field configs based on if they have a type_modifier property. The type_modifier property
         allows us to make the type defined at graphene_type to be a Field or a List, depending on what we need
@@ -1499,9 +1515,13 @@ def type_modify_fields(data_field_configs):
     a type_modifier then it is called with field_config['type'] and its result is returned. Otherwise
     we simply call field_config['type']() to construct an instance of the type
     """
+
+    def _x(k, v):
+        return apply_type(v, with_filter_fields=with_filter_fields)
+
     return R.map_with_obj(
         # If we have a type_modifier function, pass the type to it, otherwise simply construct the type
         # This all translates to Graphene.Field|List(type, [fields that can be queried])
-        lambda k, v: apply_type(v),
+        _x,
         data_field_configs
     )
