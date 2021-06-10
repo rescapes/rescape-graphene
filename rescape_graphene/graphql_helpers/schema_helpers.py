@@ -173,16 +173,26 @@ class Decimal(Scalar):
 class DataPointRelatedCreateInputType(InputObjectType):
     id = graphene.String(required=True)
 
+def fullname(klass):
+    module = klass.__module__
+    if module == 'builtins':
+        return klass.__qualname__ # avoid outputs like 'builtins.str'
+    return module + '.' + klass.__qualname__
 
 def _memoize(args):
     return [
         # Only use graphene_type here. type is a function and can't be serialized
-        args[0]['graphene_type'],
+        fullname(
+            call_if_lambda(args[0]['graphene_type'])
+        ),
         args[1],
         # TODO We use the parent_type_class to make each type unique. I don't know why graphene won't let us reuse
         # input types within the schema. It seems like a UserInputType should be reusable whether it's the User
         # of a Region or the user of a Group.
-        args[2] if R.length(args) > 2 and R.isinstance((list, tuple), args[2]) else [args[2]],
+        R.map(
+            lambda cls: cls if isinstance(cls, str) else fullname(cls),
+            args[2] if R.length(args) > 2 and R.isinstance((list, tuple), args[2]) else [args[2]]
+        )
     ]
 
 
