@@ -133,20 +133,6 @@ EXCLUDED_PROP_KEYS_FROM_FILTERING = [
     'order_by', 'version_number', 'revision', 'revision_id', 'page', 'pages', 'page_size', 'has_next', 'has_prev'
 ]
 
-
-# https://github.com/graphql-python/graphene-django/issues/124
-
-
-class ErrorMiddleware(object):
-    def on_error(self, error):
-        err = sys.exc_info()
-        logging.error(error)
-        return err[1]
-
-    def resolve(self, next, root, args, context, info):
-        return next(root, args, context, info).catch(self.on_error)
-
-
 # https://github.com/graphql-python/graphene-django/issues/91
 class Decimal(Scalar):
     """
