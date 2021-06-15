@@ -24,7 +24,7 @@ class DisableIntrospectionMiddleware:
 
     def resolve(self, next, root, info, **kwargs):
         # Block introspection in PROD to save time unless the param forceIntrospection=true is passed
-        block_introspection = not R.prop_or(False, 'forceIntrospection', info.context.GET) and settings.PROD
+        block_introspection = True or not R.prop_or(False, 'forceIntrospection', info.context.GET) and settings.PROD
         if block_introspection and info.field_name.lower() in ['__schema', '_introspection']:
             query = GraphQLObjectType(
                 "Query", lambda: {"Introspection": GraphQLField(GraphQLString, resolver=lambda *_: "Disabled")}

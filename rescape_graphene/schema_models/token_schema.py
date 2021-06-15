@@ -1,5 +1,6 @@
 import graphene
 import graphql_jwt
+from django.contrib.auth.models import AnonymousUser
 from graphene.types.generic import GenericScalar
 from graphql_jwt.settings import jwt_settings
 from rescape_python_helpers import ramda as R
