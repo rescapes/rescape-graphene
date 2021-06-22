@@ -44,7 +44,8 @@ def resolver_for_dict_field(resource, context, **kwargs):
     """
     selections = resolve_selections(context)
     field_name = context.field_name
-    data = getattr(resource, field_name) if (hasattr(resource, field_name) and R.prop(field_name, resource)) else {}
+    # Get the value, even if non truthy if the attribute exists
+    data = R.prop(field_name, resource) if R.has(field_name, resource) else {}
     # We only let this value through if it matches the kwargs
     # TODO data doesn't include full values for embedded model values, rather just {id: ...}. So if kwargs have
     # searches on other values of the model this will fail. The solution is to load the model values, but I
@@ -68,7 +69,7 @@ def resolver_for_dict_list(resource, context, **kwargs):
     selections = resolve_selections(context)
     field_name = context.field_name
     # Value defaults to None. Empty is not the same as None
-    value = getattr(resource, field_name) if hasattr(resource, field_name) else None
+    value = R.prop(field_name, resource) if R.has(field_name, resource) else None
 
     return R.map(
         lambda data: pick_selections(selections, data),
