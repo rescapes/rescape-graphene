@@ -74,9 +74,11 @@ FILTER_FIELDS = R.compose(
         lambda settings: settings.TESTING,
         # Minimum set for debugging speed
         lambda _: {
+            # Contains can be used for javascript matching and string matching
             # I think anything can have a contains filter, even complex types, because we might want
             # to test if a complex type contains certain javascript
-            'contains': dict(),
+            # https://docs.djangoproject.com/en/4.0/topics/db/queries/#containment-and-key-lookups
+            'contains': dict(type_modifier=lambda typ: graphene.List(typ), allowed_types=[graphene.String, graphene.ObjectType] ),
             'in': dict(type_modifier=lambda typ: graphene.List(typ), allowed_types=NON_COMPLEX_TYPES)
         },
         lambda _: {
@@ -133,6 +135,7 @@ EXCLUDED_PROP_KEYS_FROM_FILTERING = [
     'order_by', 'version_number', 'revision', 'revision_id', 'page', 'pages', 'page_size', 'has_next', 'has_prev'
 ]
 
+
 # https://github.com/graphql-python/graphene-django/issues/91
 class Decimal(Scalar):
     """
@@ -159,11 +162,13 @@ class Decimal(Scalar):
 class DataPointRelatedCreateInputType(InputObjectType):
     id = graphene.String(required=True)
 
+
 def fullname(klass):
     module = klass.__module__
     if module == 'builtins':
-        return klass.__qualname__ # avoid outputs like 'builtins.str'
+        return klass.__qualname__  # avoid outputs like 'builtins.str'
     return module + '.' + klass.__qualname__
+
 
 def _memoize(args):
     return [
@@ -299,7 +304,8 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
     # This doesn't apply to Update and Create input types, since we never filter during those operations
     filter_fields = allowed_filter_arguments(
         # If with_filter_fields is an array of field names only allow those field names through
-        R.filter_dict(lambda kv: kv[0] in with_filter_fields if isinstance(with_filter_fields, list) else True, input_type_field_configs),
+        R.filter_dict(lambda kv: kv[0] in with_filter_fields if isinstance(with_filter_fields, list) else True,
+                      input_type_field_configs),
         graphene_class,
         fields_only=_fields_only
     ) if with_filter_fields and (
@@ -592,8 +598,15 @@ def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_onl
         R.filter_dict(
             lambda keyvalue: field_name not in EXCLUDED_PROP_KEYS_FROM_FILTERING and (
                     not R.has('allowed_types', keyvalue[1]) or
-                    R.any_satisfy(lambda typ: issubclass(graphene_instance.__class__, typ),
-                                  keyvalue[1]['allowed_types'])
+                    R.any_satisfy(
+                        lambda typ: issubclass(
+                            graphene_instance['type'] if \
+                                isinstance(graphene_instance, dict) else \
+                                graphene_instance.__class__,
+                            typ
+                        ),
+                        keyvalue[1]['allowed_types']
+                    )
             ),
             FILTER_FIELDS if with_filter_fields else dict()
         )
@@ -676,7 +689,7 @@ def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False, with
 
     def _y(field_and_instance_and_config):
         return add_filters(field_and_instance_and_config, fields_only=fields_only,
-                    with_filter_fields=with_filter_fields)
+                           with_filter_fields=with_filter_fields)
 
     return R.compose(
         _y,

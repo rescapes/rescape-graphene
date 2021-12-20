@@ -3,7 +3,7 @@ django-filter==2.4.0
 pyramda==0.1
 graphene==2.1.8
 django-loginas==0.3.9
-graphene-django==2.15.0
+graphene-django>=2.15.0
 snapshottest==0.6.0
 inflection==0.5.1
 deepmerge==0.3.0
@@ -11,7 +11,7 @@ bumpversion==0.6.0
 djangorestframework==3.12.4
 djangorestframework-jwt==1.11.0
 psycopg2-binary==2.8.6
-django-graphql-jwt==0.3.2
+django-graphql-jwt==0.3.1
 graphql-core<3
 django-cors-headers==3.7.0
 wheel==0.36.2
@@ -27,3 +27,5 @@ django-reversion-compare==0.14.0
 numpy==1.20.3
 django-safedelete==1.0.0
 pur==5.4.1
+PyJWT<=2.0.0
+jsonfield==3.1.0
