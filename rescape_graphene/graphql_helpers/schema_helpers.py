@@ -78,7 +78,8 @@ FILTER_FIELDS = R.compose(
             # I think anything can have a contains filter, even complex types, because we might want
             # to test if a complex type contains certain javascript
             # https://docs.djangoproject.com/en/4.0/topics/db/queries/#containment-and-key-lookups
-            'contains': dict(type_modifier=lambda typ: graphene.List(typ), allowed_types=[graphene.String, graphene.ObjectType] ),
+            'contains': dict(type_modifier=lambda typ: graphene.List(typ),
+                             allowed_types=[graphene.String, graphene.ObjectType]),
             'in': dict(type_modifier=lambda typ: graphene.List(typ), allowed_types=NON_COMPLEX_TYPES)
         },
         lambda _: {
@@ -569,6 +570,24 @@ def allowed_read_fields(fields_dict, graphene_type):
     )(fields_dict)
 
 
+def _matches_graphene_type(graphene_instance, typ):
+    """
+        Determines if the given graphene_instance, which might be an instance or a dict with a type, matches typ
+    :param graphene_instance:
+    :param typ: A grahene type to match
+    :return: Boolean
+    """
+    if isinstance(graphene_instance, dict):
+        if R.has('type', graphene_instance):
+            return R.isinstance(typ, graphene_instance['type']) if \
+                R.isinstance(graphene.Scalar, graphene_instance['type']) else \
+                issubclass(graphene_instance['type'], typ)
+        else:
+            return False
+    else:
+        return issubclass(graphene_instance.__class__, typ)
+
+
 def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=False, with_filter_fields=True):
     """
         Creates pairs of filter_field, graphene_type such as [id_contains, Int(), id_in, List(Int())] for
@@ -599,12 +618,7 @@ def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_onl
             lambda keyvalue: field_name not in EXCLUDED_PROP_KEYS_FROM_FILTERING and (
                     not R.has('allowed_types', keyvalue[1]) or
                     R.any_satisfy(
-                        lambda typ: issubclass(
-                            graphene_instance['type'] if \
-                                isinstance(graphene_instance, dict) else \
-                                graphene_instance.__class__,
-                            typ
-                        ),
+                        lambda typ: _matches_graphene_type(graphene_instance, typ),
                         keyvalue[1]['allowed_types']
                     )
             ),
