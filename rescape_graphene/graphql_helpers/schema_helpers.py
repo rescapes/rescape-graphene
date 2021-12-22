@@ -609,10 +609,14 @@ def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_onl
         )
 
     return R.map_with_obj_to_values(
-        # Make all the filter pairs for each key id: idContains, id: idIn, etc
         lambda filter_str, config: [
-            f'{field_name}{capitalize_first_letter(camelize(filter_str))}',
-            '%s_%s' % (field_name, filter_str),
+            # Properties of Search Types need to be camel case because they are JSON fields
+            # Make all the filter pairs for each key id: idContains, id: idIn, etc
+            f'{field_name}{capitalize_first_letter(camelize(filter_str))}' if
+            create_filter_fields_for_search_type else
+            # Regular filter properties are underscored to match Python/Graphene
+            # Make all the filter pairs for each key label: label_contains, id: id_in, etc
+            f'{field_name}_{filter_str}',
             filter_field_config_or_type(config)
         ],
         # Only allow filters compliant with the type of pair[1]
