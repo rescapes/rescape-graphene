@@ -308,7 +308,8 @@ def fields_with_filter_fields(fields, graphene_class, parent_type_classes=[], cr
         R.filter_dict(lambda kv: kv[0] in with_filter_fields if isinstance(with_filter_fields, list) else True,
                       input_type_field_configs),
         graphene_class,
-        fields_only=_fields_only
+        fields_only=_fields_only,
+        create_filter_fields_for_search_type=create_filter_fields_for_search_type
     ) if with_filter_fields and (
             R.equals(READ, crud) or create_filter_fields_for_search_type
     ) else {}
@@ -516,7 +517,7 @@ def merge_with_django_properties(graphene_type, field_dict):
 
 
 @R.curry
-def resolve_type(graphene_type, field_config, fields_only=False, with_filter_fields=True):
+def resolve_type(graphene_type, field_config, fields_only=False, with_filter_fields=True, create_filter_fields_for_search_type=False):
     """
      Resolves the field type, instantiating scalars and recursing on input types (complex types)
      If fields_only is true (default Fasle), just return the field_config for scalars without instantiating
@@ -545,7 +546,7 @@ def resolve_type(graphene_type, field_config, fields_only=False, with_filter_fie
     else:
         # Resolve with recursion
         input_type_class_instance = input_type_class(field_config, READ, graphene_type, fields_only=fields_only,
-                                                     with_filter_fields=with_filter_fields)
+                                                     with_filter_fields=with_filter_fields, create_filter_fields_for_search_type=False)
         return R.when(callable, lambda l: l())(input_type_class_instance)
 
 
@@ -588,7 +589,7 @@ def _matches_graphene_type(graphene_instance, typ):
         return issubclass(graphene_instance.__class__, typ)
 
 
-def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=False, with_filter_fields=True):
+def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=False, with_filter_fields=True, create_filter_fields_for_search_type=False):
     """
         Creates pairs of filter_field, graphene_type such as [id_contains, Int(), id_in, List(Int())] for
         filter fields that are allowed for the field_name's graphene_type
@@ -608,8 +609,9 @@ def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_onl
         )
 
     return R.map_with_obj_to_values(
-        # Make all the filter pairs for each key id: id_contains, id: id_in, etc
+        # Make all the filter pairs for each key id: idContains, id: idIn, etc
         lambda filter_str, config: [
+            f'{field_name}{capitalize_first_letter(camelize(filter_str))}',
             '%s_%s' % (field_name, filter_str),
             filter_field_config_or_type(config)
         ],
@@ -627,7 +629,7 @@ def allowed_filter_pairs(field_name, graphene_instance, field_config, fields_onl
     )
 
 
-def make_filters(field_name, graphene_instance, field_config, fields_only=False, with_filter_fields=True):
+def make_filters(field_name, graphene_instance, field_config, fields_only=False, with_filter_fields=True, create_filter_fields_for_search_type=False):
     """
         Add the needed filters to the standard 'eq' value
         This compensates for django-filter not being implemented to work in graphene without Relay
@@ -637,13 +639,19 @@ def make_filters(field_name, graphene_instance, field_config, fields_only=False,
     return R.from_pairs(
         R.concat(
             [[field_name, field_config if fields_only else graphene_instance]],
-            allowed_filter_pairs(field_name, graphene_instance, field_config, fields_only=fields_only,
-                                 with_filter_fields=with_filter_fields)
+            allowed_filter_pairs(
+                field_name,
+                graphene_instance,
+                field_config,
+                fields_only=fields_only,
+                with_filter_fields=with_filter_fields,
+                create_filter_fields_for_search_type=create_filter_fields_for_search_type
+            )
         )
     )
 
 
-def add_filters(field_and_instance_and_config, fields_only=False, with_filter_fields=True):
+def add_filters(field_and_instance_and_config, fields_only=False, with_filter_fields=True, create_filter_fields_for_search_type=False):
     """
         Adds filter arguments to 'eq' arguments.
     :param field_and_instance_and_config: list of dict(field_name, graphene_type, field_config)
@@ -655,7 +663,8 @@ def add_filters(field_and_instance_and_config, fields_only=False, with_filter_fi
             lambda field_and_type_and_config: make_filters(
                 *R.props(['field_name', 'graphene_instance', 'field_config'], field_and_type_and_config),
                 fields_only=fields_only,
-                with_filter_fields=with_filter_fields
+                with_filter_fields=with_filter_fields,
+                create_filter_fields_for_search_type=create_filter_fields_for_search_type
             ),
             field_and_instance_and_config
         ),
@@ -684,7 +693,7 @@ def top_level_allowed_filter_arguments(fields, graphene_type, with_filter_fields
     )
 
 
-def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False, with_filter_fields=True):
+def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False, with_filter_fields=True, create_filter_fields_for_search_type=False):
     """
         Used internally by calls started by top_level_allowed_filter_arguments
     :param fields_dict: The fields_dict for the Django model
@@ -697,13 +706,22 @@ def allowed_filter_arguments(fields_dict, graphene_type, fields_only=False, with
         return dict(
             field_name=field_name,
             field_config=field_config,
-            graphene_instance=resolve_type(graphene_type, field_config, fields_only=fields_only,
-                                           with_filter_fields=with_filter_fields)
+            graphene_instance=resolve_type(
+                graphene_type,
+                field_config,
+                fields_only=fields_only,
+                with_filter_fields=with_filter_fields,
+                create_filter_fields_for_search_type=create_filter_fields_for_search_type
+            )
         )
 
     def _y(field_and_instance_and_config):
-        return add_filters(field_and_instance_and_config, fields_only=fields_only,
-                           with_filter_fields=with_filter_fields)
+        return add_filters(
+            field_and_instance_and_config,
+            fields_only=fields_only,
+            with_filter_fields=with_filter_fields,
+            create_filter_fields_for_search_type=create_filter_fields_for_search_type
+        )
 
     return R.compose(
         _y,
