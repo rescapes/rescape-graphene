@@ -131,7 +131,7 @@ def handle_can_mutate_related(model, related_model_scope_config, data, validated
 
     def make_fields_unique_if_needed(scope_obj):
         # If a field needs to be unique, like a key, call it's unique_with method
-        R.map_with_obj(
+        return R.map_with_obj(
             lambda key, value: R.item_str_path_or(R.identity, f'field_config.{key}.unique_with', related_model_scope_config)(scope_obj),
             scope_obj
         )
