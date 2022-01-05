@@ -939,6 +939,8 @@ def related_object_id_if_django_type(fields_dict, key, value):
     :return:  {{key}_id, value.id} if the key represents a django type
     """
     try:
+        # TODO {key}_id can be found from the Django model._meta.fields[*].attname property for field with name
+        # model._meta.fields[*].attname. It might be better to use that instead of assuming _id
         return {f'{key}_id': R.prop('id', value)} \
             if R.prop_or(False, 'django_type', fields_dict[key]) \
             else {key: value}
