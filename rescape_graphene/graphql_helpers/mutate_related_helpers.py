@@ -107,12 +107,13 @@ def validate_and_mutate_scope_instances(scope_instances_config, data):
 
         # Create/Update any scope instances that permit it
         model = scope_instances_config[i]['model']
-        return handle_can_mutate_related(
+        data = handle_can_mutate_related(
             model,
             scope,
             data,
             validated_scope_objs_instances_and_ids
         )
+    return data
 
 
 
