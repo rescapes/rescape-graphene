@@ -1,4 +1,4 @@
-Django==3.2.3
+Django==3.2.12
 django-filter==2.4.0
 pyramda==0.1
 graphene==2.1.8
