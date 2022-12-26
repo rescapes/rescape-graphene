@@ -14,7 +14,7 @@ psycopg2-binary==2.8.6
 django-graphql-jwt==0.3.1
 graphql-core<3
 django-cors-headers==3.7.0
-wheel==0.36.2
+wheel==0.38.1
 twine==3.4.1
 utils==1.0.1
 simplejson==3.17.2
